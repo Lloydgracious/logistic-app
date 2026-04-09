@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #020617;
+  --foreground: #f8fafc;
+  --primary: #00d1ff; /* Electric Cyan */
+  --primary-glow: rgba(0, 209, 255, 0.25);
+  --secondary: #0f172a;
+  --success: #10b981;
+  --danger: #f43f5e;
+}
+
+body {
+  color: var(--foreground);
+  background: radial-gradient(circle at 50% 0%, #0f172a 0%, #020617 100%);
+  background-attachment: fixed;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer utilities {
+  .glow-hover {
+    transition: all 0.3s ease;
+  }
+  .glow-hover:hover {
+    box-shadow: 0 0 15px var(--primary-glow);
+    border-color: var(--primary);
+  }
+  
+  .glow-text {
+    text-shadow: 0 0 10px var(--primary-glow);
+  }
+}
+
+/* Glassmorphism utils */
+.glass {
+  background: rgba(26, 26, 26, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}

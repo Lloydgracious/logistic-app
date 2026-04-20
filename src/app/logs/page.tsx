@@ -2,142 +2,154 @@
 
 import { useStore } from "@/lib/store";
 import { motion, AnimatePresence } from "framer-motion";
-import { ScrollText, Terminal, Activity, ArrowRight, ShieldCheck, Cpu, Database, Hash, Clock } from "lucide-react";
+import { ScrollText, Activity, ArrowRight, CheckCircle2, Clock, MapPin, Package, ShoppingCart, Truck, Search, Filter } from "lucide-react";
 import { ClientDate } from "@/components/ClientDate";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 export default function LogsPage() {
   const { logs } = useStore();
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredLogs = logs.filter(log => 
+    log.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    log.type.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const getLogIcon = (type: string) => {
+    switch (type) {
+      case "INCOMING": return <Truck className="w-5 h-5" />;
+      case "OUTGOING": return <ShoppingCart className="w-5 h-5" />;
+      case "MANUAL": return <Package className="w-5 h-5" />;
+      default: return <Activity className="w-5 h-5" />;
+    }
+  };
 
   const getLogColors = (type: string) => {
     switch (type) {
-      case "INCOMING": return "text-rose-500 border-rose-500 bg-rose-500/5";
-      case "OUTGOING": return "text-indigo-500 border-indigo-500 bg-indigo-500/5";
-      case "MANUAL": return "text-cyan-500 border-cyan-500 bg-cyan-500/5";
-      default: return "text-slate-500 border-slate-500 bg-slate-500/5";
+      case "INCOMING": return "border-rose-500 text-rose-600 bg-rose-50 dark:bg-rose-950/20";
+      case "OUTGOING": return "border-indigo-500 text-indigo-600 bg-indigo-50 dark:bg-indigo-950/20";
+      case "MANUAL": return "border-cyan-500 text-cyan-600 bg-cyan-50 dark:bg-cyan-950/20";
+      default: return "border-slate-500 text-slate-600 bg-slate-50 dark:bg-slate-900";
     }
   };
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto pb-20 animate-in fade-in slide-in-from-bottom-8 duration-500 font-inter">
+    <div className="space-y-8 max-w-5xl mx-auto pb-20 animate-in fade-in slide-in-from-bottom-8 duration-500">
       
-      {/* Header with High-Resolution Stats */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8 pb-8 border-b-4 border-slate-900 dark:border-white">
-        <div className="relative">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-rose-600 text-white text-[9px] font-black uppercase tracking-[0.3em] mb-4">
-            Live Telemetry • Buffer Active
-          </div>
-          <h2 className="text-5xl md:text-7xl font-black text-slate-900 dark:text-white tracking-tighter outfit uppercase leading-none">
-            Audit <span className="text-rose-600 italic">Engine</span>
-          </h2>
-          <p className="text-xs font-bold text-slate-500 dark:text-zinc-500 mt-4 max-w-md leading-relaxed uppercase tracking-tight">
-            Sequential event ledgering for the global garage ecosystem. 
-            Cryptographic verification active for all incoming/outgoing data packets.
-          </p>
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-8 border-slate-900 dark:border-white pb-10">
+        <div>
+           <div className="flex items-center gap-2 mb-4">
+              <div className="w-10 h-10 bg-rose-600 text-white flex items-center justify-center font-black rotate-45">
+                 <ScrollText className="w-5 h-5 -rotate-45" />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-rose-600">Operational History</span>
+           </div>
+           <h2 className="text-5xl md:text-6xl font-black text-slate-900 dark:text-white tracking-tighter outfit uppercase leading-none">
+             Audit <span className="text-rose-600 italic">Timeline</span>
+           </h2>
+           <p className="text-sm font-bold text-slate-500 mt-4 max-w-md uppercase tracking-tight">
+             Comprehensive sequential tracking of all garage operations and inventory shifts.
+           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 w-full md:w-auto">
-           <div className="p-6 bg-slate-900 text-white border-b-8 border-rose-600 shadow-2xl min-w-[200px]">
-              <div className="flex items-center gap-3 mb-4">
-                 <ShieldCheck className="w-5 h-5 text-rose-500" />
-                 <span className="text-[9px] font-black uppercase tracking-widest opacity-60">Auth Protocol</span>
-              </div>
-              <p className="text-2xl font-black uppercase tracking-tighter outfit leading-none">V4.2.SECURE</p>
-           </div>
-           <div className="p-6 bg-white dark:bg-zinc-900 border-2 border-slate-900 dark:border-white shadow-[8px_8px_0px_0px_rgba(225,29,72,1)] min-w-[200px]">
-              <div className="flex items-center gap-3 mb-4">
-                 <Database className="w-5 h-5 text-indigo-500" />
-                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Ledger Entry</span>
-              </div>
-              <p className="text-2xl font-black uppercase tracking-tighter outfit leading-none text-slate-900 dark:text-white">{logs.length} EVTS</p>
-           </div>
+        <div className="relative w-full md:w-72 group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-hover:text-rose-500 transition-colors" />
+          <input 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search activity..." 
+            className="w-full bg-slate-50 dark:bg-zinc-900 border-4 border-slate-900 dark:border-white pl-12 pr-4 py-4 text-xs font-black uppercase tracking-widest outline-none focus:ring-4 focus:ring-rose-500/10 placeholder-slate-400"
+          />
         </div>
       </div>
 
-      {/* Main Terminal Feed */}
-      <div className="border-[6px] border-slate-900 dark:border-white bg-white dark:bg-black overflow-hidden relative">
-        <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b-2 border-slate-800">
-           <div className="flex items-center gap-3">
-              <Terminal className="w-4 h-4 text-rose-500" />
-              <span className="text-[10px] font-black uppercase tracking-[0.4em]">GarageFlow.Audit_LOG.v4</span>
-           </div>
-           <div className="hidden sm:flex items-center gap-4 text-[9px] font-black uppercase tracking-widest text-slate-500">
-              <span className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-rose-500" /> CRITICAL</span>
-              <span className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-indigo-500" /> SYSTEM</span>
-              <span className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-cyan-500" /> USER</span>
-           </div>
-        </div>
+      {/* Narrative Timeline */}
+      <div className="relative">
+        {/* Timeline Path Line */}
+        <div className="absolute left-[26px] md:left-1/2 top-0 bottom-0 w-1 bg-slate-100 dark:bg-zinc-900 md:-translate-x-1/2 hidden sm:block" />
 
-        <div className="divide-y-2 divide-slate-100 dark:divide-zinc-900">
+        <div className="space-y-12 relative z-10">
           <AnimatePresence initial={false}>
-            {logs.map((log, idx) => (
+            {filteredLogs.map((log, idx) => (
               <motion.div 
                 key={log.id}
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="group flex flex-col lg:flex-row items-start lg:items-center p-8 gap-8 hover:bg-slate-50 dark:hover:bg-zinc-900/50 transition-all relative overflow-hidden"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.05 }}
+                className={cn(
+                  "flex flex-col md:flex-row items-center gap-8 md:gap-0 w-full",
+                  idx % 2 === 0 ? "md:flex-row-reverse" : ""
+                )}
               >
-                {/* Event Index Header */}
-                <div className="flex items-center gap-4 w-full lg:w-48 flex-shrink-0">
-                   <div className="w-12 h-12 bg-slate-900 text-white flex items-center justify-center font-black outfit text-sm">
-                      {logs.length - idx}
+                {/* Visual Label Section */}
+                <div className="w-full md:w-1/2 flex flex-col md:px-12 items-center md:items-start text-center md:text-left">
+                   <div className={cn(
+                      "inline-flex items-center gap-2 px-4 py-2 border-2 text-[10px] font-black uppercase tracking-widest mb-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)]",
+                      getLogColors(log.type)
+                   )}>
+                      {getLogIcon(log.type)}
+                      {log.type} Phase
                    </div>
-                   <div className="flex-1">
-                      <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Entry ID</div>
-                      <div className="text-xs font-black text-slate-900 dark:text-zinc-500 font-mono">EVT_{log.id.toUpperCase()}</div>
-                   </div>
-                </div>
-
-                <div className="w-full lg:w-56 flex-shrink-0">
-                  <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                    <Clock className="w-3 h-3" /> Timestamp
-                  </div>
-                  <p className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-tighter">
-                    <ClientDate date={log.timestamp} format="full" />
-                  </p>
-                </div>
-
-                <div className="flex-shrink-0">
-                   <div className={`px-5 py-2 border-2 font-black text-[10px] uppercase tracking-[0.2em] shadow-sm transition-colors ${getLogColors(log.type)}`}>
-                     {log.type}
+                   <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 mt-1">
+                      <Clock className="w-3 h-3" /> <ClientDate date={log.timestamp} format="full" />
                    </div>
                 </div>
 
-                <div className="flex-1 lg:pl-8 lg:border-l-2 lg:border-slate-100 lg:dark:border-zinc-800">
-                   <div className="flex items-center gap-2 text-[9px] text-rose-500 font-black uppercase tracking-widest mb-1">
-                     <Hash className="w-3 h-3" /> Event Payload
+                {/* Center Node */}
+                <div className="relative flex items-center justify-center shrink-0">
+                   <div className="w-14 h-14 bg-slate-950 dark:bg-white flex items-center justify-center border-4 border-white dark:border-black shadow-xl z-20">
+                      <div className={cn("w-3 h-3 rounded-none animate-pulse", 
+                        log.type === 'INCOMING' ? 'bg-rose-500' : 
+                        log.type === 'OUTGOING' ? 'bg-indigo-500' : 'bg-cyan-500'
+                      )} />
                    </div>
-                   <p className="text-base font-black text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-3">
-                     {log.message}
+                </div>
+
+                {/* Payload / Message Section */}
+                <div className="w-full md:w-1/2 bg-white dark:bg-black border-2 border-slate-200 dark:border-zinc-800 p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,0.05)] md:mx-12 group hover:border-slate-900 dark:hover:border-white transition-all cursor-default">
+                   <div className="flex items-center gap-3 mb-4">
+                      <ArrowRight className="w-4 h-4 text-rose-500 group-hover:translate-x-1 transition-transform" />
+                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Activity Manifest</span>
+                   </div>
+                   <p className="text-base md:text-lg font-black text-slate-900 dark:text-slate-100 outfit leading-none italic uppercase tracking-tighter">
+                      {log.message}
                    </p>
+                   <div className="mt-6 pt-4 border-t border-slate-50 dark:border-zinc-900 flex items-center justify-between">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase">Seq: {log.id.toUpperCase()}</span>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                   </div>
                 </div>
-
-                <div className="absolute right-0 top-0 bottom-0 w-2 bg-gradient-to-b from-transparent via-rose-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               </motion.div>
             ))}
           </AnimatePresence>
-          
-          {logs.length === 0 && (
-            <div className="p-32 text-center flex flex-col items-center justify-center gap-6 bg-slate-50 dark:bg-[#030303]">
-               <div className="w-24 h-24 border-8 border-slate-200 dark:border-zinc-800 flex items-center justify-center transform rotate-45">
-                  <Terminal className="w-10 h-10 text-slate-300 -rotate-45" />
-               </div>
-               <div className="space-y-2">
-                 <p className="text-xl font-black text-slate-400 dark:text-zinc-600 uppercase tracking-tighter outfit italic">Awaiting Primary Interface Signal</p>
-                 <p className="text-[10px] font-black text-slate-300 dark:text-zinc-800 uppercase tracking-[0.5em]">System Status: Standby</p>
-               </div>
+
+          {filteredLogs.length === 0 && (
+            <div className="p-20 text-center flex flex-col items-center justify-center gap-4 bg-slate-50 dark:bg-zinc-900/50 border-4 border-dashed border-slate-200">
+               <Activity className="w-10 h-10 text-slate-300 animate-pulse" />
+               <p className="text-xs font-black text-slate-400 uppercase tracking-widest">No sequential data detected for current parameters.</p>
             </div>
           )}
         </div>
+      </div>
 
-        <div className="bg-slate-900 text-white px-8 py-5 flex flex-col sm:flex-row justify-between items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em]">
-           <button className="flex items-center gap-2 hover:text-rose-500 transition-colors">
-              <Cpu className="w-4 h-4 text-indigo-500" /> Process ID: GF_CORE_PROC_772
-           </button>
-           <span className="flex items-center gap-3 text-slate-500">
-              <span className="w-2 h-2 bg-emerald-500 animate-pulse" />
-              Stream Connected • TLS 1.3 Secure
-           </span>
-        </div>
+      {/* System Footer Stats */}
+      <div className="bg-slate-900 text-white p-8 md:p-12 flex flex-col md:flex-row justify-between items-center gap-8">
+         <div className="flex items-center gap-6">
+            <div className="text-center">
+               <p className="text-[9px] font-black opacity-60 uppercase tracking-widest mb-1">Total Cycles</p>
+               <p className="text-2xl font-black outfit">{logs.length}</p>
+            </div>
+            <div className="w-[1px] h-10 bg-slate-800" />
+            <div className="text-center">
+               <p className="text-[9px] font-black opacity-60 uppercase tracking-widest mb-1">Uptime Trace</p>
+               <p className="text-2xl font-black outfit text-emerald-500">100%</p>
+            </div>
+         </div>
+         <div className="flex items-center gap-3 italic font-black text-xs opacity-80 uppercase tracking-tighter">
+            GarageFlow Operational Archive // Verified Protocol Secure
+         </div>
       </div>
     </div>
   );

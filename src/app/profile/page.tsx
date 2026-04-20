@@ -1,7 +1,7 @@
 "use client";
 
 
-import { User, Mail, Bell, Shield, MapPin, Camera, Save, ArrowLeft } from "lucide-react";
+import { User, Mail, MapPin, Camera, Save, ArrowLeft } from "lucide-react";
 
 import { useRouter } from "next/navigation";
 
@@ -63,8 +63,6 @@ export default function ProfilePage() {
             <div className="space-y-1">
               {[
                 { icon: User, label: "Personal Info", active: true },
-                { icon: Bell, label: "Notifications", active: false },
-                { icon: Shield, label: "Security", active: false },
               ].map((item) => (
                 <button 
                   key={item.label}
@@ -123,33 +121,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div className="saas-card p-6">
-            <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 mb-5 pb-4 border-b border-slate-100 dark:border-slate-700/50">Preferences</h3>
-            
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-zinc-900">
-                <div>
-                  <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Critical Inventory Alerts</h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500 font-medium">Receive instant notifications when stock runs below 10%.</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" defaultChecked />
-                  <div className="w-11 h-6 bg-slate-200 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white dark:bg-black after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-success shadow-inner"></div>
-                </label>
-              </div>
 
-              <div className="flex items-center justify-between p-4 rounded-xl border border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-zinc-900">
-                <div>
-                  <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Fleet Arrival Summaries</h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 dark:text-slate-500 font-medium">Daily email digest of all shipments that arrived.</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" />
-                  <div className="w-11 h-6 bg-slate-200 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white dark:bg-black after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary shadow-inner"></div>
-                </label>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

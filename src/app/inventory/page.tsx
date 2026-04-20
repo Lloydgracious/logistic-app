@@ -138,17 +138,18 @@ export default function InventoryPage() {
                            Optimal
                          </span>
                       )}
-                    </td>
                     <td className="px-6 py-6 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                       <button onClick={() => handleAdjust(item.itemName, item.quantity, -10)} className="w-10 h-10 rounded-none bg-white dark:bg-zinc-900 hover:bg-rose-500 hover:text-white flex items-center justify-center transition text-slate-600 dark:text-zinc-400 border border-slate-200 dark:border-slate-800 font-black shadow-sm">−</button>
-                       <button onClick={() => handleAdjust(item.itemName, item.quantity, +10)} className="w-10 h-10 rounded-none bg-white dark:bg-zinc-900 hover:bg-emerald-500 hover:text-white flex items-center justify-center transition text-slate-600 dark:text-zinc-400 border border-slate-200 dark:border-slate-800 font-black shadow-sm">+</button>
-                    </div>
-                  </td>
-              );
-            })}
-          </tbody>
-        </table>
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => handleAdjust(item.itemName, item.quantity, -10)} className="w-10 h-10 rounded-none bg-white dark:bg-zinc-900 hover:bg-rose-500 hover:text-white flex items-center justify-center transition text-slate-600 dark:text-zinc-400 border border-slate-200 dark:border-slate-800 font-black shadow-sm">−</button>
+                        <button onClick={() => handleAdjust(item.itemName, item.quantity, +10)} className="w-10 h-10 rounded-none bg-white dark:bg-zinc-900 hover:bg-emerald-500 hover:text-white flex items-center justify-center transition text-slate-600 dark:text-zinc-400 border border-slate-200 dark:border-slate-800 font-black shadow-sm">+</button>
+                      </div>
+                    </td>
+                  </motion.tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

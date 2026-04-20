@@ -2,7 +2,7 @@
 
 import { useStore } from "@/lib/store";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, Clock, Tag, Search, ArrowRight, Table as TableIcon, List, Activity } from "lucide-react";
+import { User, Clock, Search, Activity } from "lucide-react";
 import { ClientDate } from "@/components/ClientDate";
 import { useState } from "react";
 

@@ -32,8 +32,12 @@ export default function ProfilePage() {
         <div className="space-y-6">
           <div className="saas-card p-6 flex flex-col items-center text-center">
             <div className="relative mb-4 group cursor-pointer">
-              <div className="w-24 h-24 rounded-full border-4 border-white shadow-md overflow-hidden">
-                <img src="https://i.pravatar.cc/150?img=11" alt="John Smith" className="w-full h-full object-cover group-hover:opacity-80 transition-opacity" />
+              <div className="w-24 h-24 rounded-full border-4 border-white shadow-md overflow-hidden relative">
+                <div 
+                  className="w-full h-full bg-cover bg-center group-hover:opacity-80 transition-opacity"
+                  style={{ backgroundImage: `url('https://i.pravatar.cc/150?img=11')` }}
+                  aria-label="John Smith"
+                />
               </div>
               <div className="absolute inset-0 bg-slate-900/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                 <Camera className="text-white w-6 h-6" />

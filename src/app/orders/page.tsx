@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import { getWaitingDays } from "@/lib/utils";
-import { Plus, ArrowRight, ShoppingCart, CheckCircle2, Trash, Calendar } from "lucide-react";
+import { Plus, ArrowRight, ShoppingCart, CheckCircle2, Trash } from "lucide-react";
 
 const AnimatedCar = dynamic(() => import("@/components/AnimatedCar").then(mod => mod.AnimatedCar), { ssr: false });
 
@@ -42,7 +42,13 @@ export default function OrdersPage() {
   };
   const updateItemRow = (idx: number, field: 'name' | 'quantity' | 'unit', val: string) => {
     const updated = [...items];
-    (updated[idx] as any)[field] = val;
+    if (field === 'quantity') {
+      updated[idx].quantity = val;
+    } else if (field === 'name') {
+      updated[idx].name = val;
+    } else if (field === 'unit') {
+      updated[idx].unit = val;
+    }
     setItems(updated);
   };
 
@@ -186,7 +192,7 @@ export default function OrdersPage() {
                     <p className="text-xs font-bold text-slate-400 dark:text-slate-500 tracking-wider">VEHICLE ID: {order.carNumber}</p>
                     {order.customerNote && (
                       <div className="mt-2 text-xs bg-rose-50 dark:bg-rose-900/10 text-rose-600 dark:text-rose-400 p-2 rounded-none border border-rose-100 dark:border-rose-900/30 italic">
-                        " {order.customerNote} "
+                        &quot; {order.customerNote} &quot;
                       </div>
                     )}
                   </div>

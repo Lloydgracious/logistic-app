@@ -4,7 +4,6 @@ import { useStore } from "@/lib/store";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Package, AlertCircle } from "lucide-react";
 import { useState } from "react";
-import { ClientDate } from "@/components/ClientDate";
 
 export default function InventoryPage() {
   const { inventory, updateInventoryManual } = useStore();

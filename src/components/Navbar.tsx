@@ -2,7 +2,6 @@
 
 import { Bell, Search, LayoutDashboard, Truck, ShoppingCart, Package, Moon, Sun, Layout, ScrollText, Receipt } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";

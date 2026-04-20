@@ -3,7 +3,7 @@
 import { useStore } from "@/lib/store";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Receipt, FileText, Printer, Download, Share2, ArrowRight, CheckCircle2, ShoppingCart, User, Calendar } from "lucide-react";
+import { Receipt, FileText, Printer, Download, ArrowRight, CheckCircle2, ShoppingCart, User, Calendar } from "lucide-react";
 import { ClientDate } from "@/components/ClientDate";
 
 export default function InvoicePage() {
@@ -13,7 +13,7 @@ export default function InvoicePage() {
   const selectedOrder = orders.find(o => o.id === selectedOrderId);
 
   // Mock calculation for the invoice
-  const calculateTotal = (items: any[]) => {
+  const calculateTotal = (items: { quantity: number }[]) => {
     return items.reduce((acc, item) => acc + (item.quantity * 100), 0); // Flat 100 per unit for mock
   };
 

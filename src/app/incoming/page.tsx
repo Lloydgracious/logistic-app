@@ -2,7 +2,7 @@
 
 import { useStore, IncomingStatus } from "@/lib/store";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, ArrowRight, Truck, Trash, Calendar, Timer } from "lucide-react";
+import { Plus, ArrowRight, Truck, Trash } from "lucide-react";
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import { getWaitingDays } from "@/lib/utils";
@@ -41,7 +41,13 @@ export default function IncomingPage() {
   };
   const updateItemRow = (idx: number, field: 'name' | 'quantity' | 'unit', val: string) => {
     const updated = [...items];
-    (updated[idx] as any)[field] = val;
+    if (field === 'quantity') {
+      updated[idx].quantity = val;
+    } else if (field === 'name') {
+      updated[idx].name = val;
+    } else if (field === 'unit') {
+      updated[idx].unit = val;
+    }
     setItems(updated);
   };
 
@@ -180,7 +186,7 @@ export default function IncomingPage() {
                     <p className="text-xs font-bold text-slate-400 dark:text-zinc-600 uppercase tracking-widest">{item.supplierName}</p>
                     {item.note && (
                       <div className="mt-2 text-xs bg-cyan-50 dark:bg-cyan-900/10 text-cyan-700 dark:text-cyan-400 p-2 rounded-none border border-cyan-100 dark:border-cyan-900/30 italic font-medium">
-                        " {item.note} "
+                        &quot; {item.note} &quot;
                       </div>
                     )}
                   </div>

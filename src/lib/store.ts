@@ -45,6 +45,7 @@ export interface LogEntry {
   type: LogType;
   message: string;
   timestamp: string;
+  operator?: string;
 }
 
 interface GarageState {
@@ -88,7 +89,7 @@ export const useStore = create<GarageState>((set, get) => ({
   ],
 
   addLog: (type, message) => set((state) => ({
-    logs: [{ id: generateId(), type, message, timestamp: new Date().toISOString() }, ...state.logs]
+    logs: [{ id: generateId(), type, message, timestamp: new Date().toISOString(), operator: "Master Admin" }, ...state.logs]
   })),
 
   addIncoming: (entry) => {

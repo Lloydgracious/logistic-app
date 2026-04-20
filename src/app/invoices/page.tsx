@@ -144,8 +144,8 @@ export default function InvoicePage() {
                        </div>
                     </div>
 
-                    <div className="mb-20">
-                       <table className="w-full text-left">
+                    <div className="mb-20 overflow-x-auto custom-scrollbar">
+                       <table className="w-full text-left min-w-[600px]">
                           <thead>
                              <tr className="border-b-2 border-slate-900 dark:border-white">
                                 <th className="py-4 text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Cargo Description</th>

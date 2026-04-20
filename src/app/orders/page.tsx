@@ -149,16 +149,18 @@ export default function OrdersPage() {
                    </button>
                  </div>
                  <div className="space-y-3">
-                   {items.map((it, idx) => (
-                     <div key={idx} className="flex gap-3 items-center group">
-                       <input value={it.name} onChange={e=>updateItemRow(idx, 'name', e.target.value)} placeholder="Item Name" className="flex-1 bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
-                       <input value={it.quantity} type="number" onChange={e=>updateItemRow(idx, 'quantity', e.target.value)} placeholder="Qty" className="w-24 bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
-                       <input value={it.unit} onChange={e=>updateItemRow(idx, 'unit', e.target.value)} placeholder="Unit" className="w-28 bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
-                       <button onClick={() => removeItemRow(idx)} disabled={items.length === 1} className="p-2 text-slate-300 hover:text-red-500 disabled:opacity-0 transition-all">
-                         <Trash className="w-4 h-4" />
-                       </button>
-                     </div>
-                   ))}
+                    {items.map((it, idx) => (
+                      <div key={idx} className="flex flex-col md:flex-row gap-3 items-start md:items-center group">
+                        <input value={it.name} onChange={e=>updateItemRow(idx, 'name', e.target.value)} placeholder="Item Name" className="w-full md:flex-1 bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
+                        <div className="flex gap-3 w-full md:w-auto">
+                          <input value={it.quantity} type="number" onChange={e=>updateItemRow(idx, 'quantity', e.target.value)} placeholder="Qty" className="flex-1 md:w-24 bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
+                          <input value={it.unit} onChange={e=>updateItemRow(idx, 'unit', e.target.value)} placeholder="Unit" className="flex-1 md:w-28 bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
+                          <button onClick={() => removeItemRow(idx)} disabled={items.length === 1} className="md:opacity-0 group-hover:opacity-100 p-2.5 text-slate-400 hover:text-rose-500 transition-all border border-transparent hover:border-rose-100">
+                            <Trash className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                  </div>
                </div>
 

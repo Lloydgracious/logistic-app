@@ -1,7 +1,7 @@
 "use client";
 
 
-import { User, Mail, MapPin, Camera, Save, ArrowLeft } from "lucide-react";
+import { User, Mail, Camera, Save, ArrowLeft } from "lucide-react";
 
 import { useRouter } from "next/navigation";
 
@@ -105,19 +105,6 @@ export default function ProfilePage() {
                 <input type="email" id="email" defaultValue="john@logistics.inc" className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-slate-700 rounded-lg py-2 pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-medium text-slate-800 dark:text-slate-100" />
               </div>
               <p className="text-xs text-slate-400 dark:text-slate-500 mt-2 font-medium">Changing your email address will require re-verification.</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-1.5" htmlFor="location">Facility Location</label>
-              <div className="relative">
-                <MapPin className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                <select id="location" className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-slate-700 rounded-lg py-2 pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-medium text-slate-800 dark:text-slate-100 appearance-none">
-                  <option>North America - Hub A</option>
-                  <option>North America - Hub B</option>
-                  <option>Europe - Hub A</option>
-                  <option>Asia Pacific - Hub A</option>
-                </select>
-              </div>
             </div>
           </div>
 

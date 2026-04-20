@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, LogIn, ShoppingCart, Package, ScrollText, ChevronRight } from "lucide-react";
+import { LayoutDashboard, LogIn, ShoppingCart, Package, ScrollText } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -28,11 +28,11 @@ export function Sidebar() {
         width: isHovered ? "220px" : "68px",
         x: 0 
       }}
-      className="fixed left-6 top-1/2 -translate-y-1/2 z-[100] glass rounded-[2.5rem] border border-[#ffffff15] shadow-[0_20px_50px_rgba(0,0,0,0.4)] flex flex-col items-center py-8 gap-8 overflow-hidden backdrop-blur-2xl group transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]"
+      className="fixed left-6 top-1/2 -translate-y-1/2 z-[100] bg-white dark:bg-black/60 rounded-[2.5rem] border border-slate-200 dark:border-white/10 shadow-premium flex flex-col items-center py-8 gap-8 overflow-hidden backdrop-blur-2xl group transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]"
     >
       {/* App Logo/Icon */}
       <div className="relative flex items-center justify-center">
-        <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#00d1ff] to-orange-800 flex items-center justify-center glow-hover shadow-[0_0_20px_rgba(255,106,0,0.3)]">
+        <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-primary to-blue-600 flex items-center justify-center glow-hover shadow-[0_0_20px_rgba(37,99,235,0.3)]">
           <span className="font-black text-white text-lg">G</span>
         </div>
         <AnimatePresence>
@@ -41,7 +41,7 @@ export function Sidebar() {
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
-              className="absolute left-14 whitespace-nowrap font-bold text-xl tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-white to-orange-200"
+              className="absolute left-14 whitespace-nowrap font-bold text-xl tracking-tighter text-slate-800 dark:text-white"
             >
               GarageFlow
             </motion.span>
@@ -60,13 +60,15 @@ export function Sidebar() {
               href={link.href}
               className={cn(
                 "flex items-center gap-4 px-3 py-3.5 rounded-[1.5rem] transition-all duration-300 relative group/item",
-                isActive ? "text-white" : "text-gray-400 hover:text-white"
+                isActive 
+                  ? "text-primary dark:text-white" 
+                  : "text-slate-400 dark:text-gray-400 hover:text-slate-800 dark:hover:text-white"
               )}
             >
               {isActive && (
                 <motion.div
                   layoutId="nav-active"
-                  className="absolute inset-0 bg-gradient-to-r from-[#00d1ff]/20 to-orange-500/5 border border-[#00d1ff]/30 rounded-[1.5rem]"
+                  className="absolute inset-0 bg-blue-50 dark:bg-white/10 border border-blue-100 dark:border-white/20 rounded-[1.5rem]"
                   initial={false}
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 />
@@ -74,7 +76,7 @@ export function Sidebar() {
               
               <div className={cn(
                 "relative z-10 w-6 h-6 flex items-center justify-center transition-transform group-hover/item:scale-110 duration-300",
-                isActive && "text-[#00d1ff]"
+                isActive && "text-primary dark:text-primary"
               )}>
                 <Icon className="w-5 h-5 shrink-0" />
               </div>
@@ -85,7 +87,7 @@ export function Sidebar() {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -10 }}
-                    className="font-semibold text-sm whitespace-nowrap relative z-10"
+                    className="relative z-10 whitespace-nowrap font-bold text-sm tracking-tight"
                   >
                     {link.name}
                   </motion.span>

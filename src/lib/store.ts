@@ -7,6 +7,7 @@ export type LogType = "INCOMING" | "OUTGOING" | "MANUAL";
 export interface ItemDetail {
   name: string;
   quantity: number;
+  unit?: string;
 }
 
 export interface Incoming {
@@ -17,6 +18,7 @@ export interface Incoming {
   status: IncomingStatus;
   arrivalTime: string;
   durationHours: number;
+  note?: string;
 }
 
 export interface Order {
@@ -27,12 +29,14 @@ export interface Order {
   status: OrderStatus;
   orderTime: string;
   finalDate: string;
+  customerNote?: string;
 }
 
 export interface InventoryItem {
   id: string;
   itemName: string;
   quantity: number;
+  unit?: string;
   updatedAt: string;
 }
 
@@ -55,7 +59,7 @@ interface GarageState {
   addOrder: (order: Omit<Order, 'id' | 'status' | 'orderTime' | 'finalDate'> & { orderTime?: string, finalDate?: string }) => void;
   updateOrderStatus: (id: string, status: OrderStatus) => void;
 
-  updateInventoryManual: (itemName: string, quantity: number, difference: number) => void;
+  updateInventoryManual: (itemName: string, quantity: number, difference: number, unit?: string) => void;
   addLog: (type: LogType, message: string) => void;
 }
 
@@ -68,16 +72,16 @@ const FIXED_TWO_HOURS_AGO = "2026-04-05T13:00:00.000Z";
 
 export const useStore = create<GarageState>((set, get) => ({
   incomingList: [
-    { id: '1', carNumber: 'ABC-123', supplierName: 'TechParts Inc', items: [{ name: 'Engine Oil', quantity: 50 }], status: 'ON_THE_WAY', arrivalTime: FIXED_NOW, durationHours: 48 },
-    { id: '2', carNumber: 'XYZ-987', supplierName: 'TireCorp', items: [{ name: 'Tires', quantity: 100 }], status: 'AT_BRIDGE', arrivalTime: FIXED_HOUR_AGO, durationHours: 12 },
+    { id: '1', carNumber: 'ABC-123', supplierName: 'TechParts Inc', items: [{ name: 'Engine Oil', quantity: 50, unit: 'Liters' }], status: 'ON_THE_WAY', arrivalTime: FIXED_NOW, durationHours: 48, note: 'Urgent delivery' },
+    { id: '2', carNumber: 'XYZ-987', supplierName: 'TireCorp', items: [{ name: 'Tires', quantity: 100, unit: 'Pcs' }], status: 'AT_BRIDGE', arrivalTime: FIXED_HOUR_AGO, durationHours: 12 },
   ],
   orders: [
-    { id: '101', customerName: 'John Doe', carNumber: 'JHN-001', items: [{ name: 'Tires', quantity: 4 }], status: 'PENDING', orderTime: FIXED_TWO_HOURS_AGO, finalDate: FIXED_NOW }
+    { id: '101', customerName: 'John Doe', carNumber: 'JHN-001', items: [{ name: 'Tires', quantity: 4, unit: 'Pcs' }], status: 'PENDING', orderTime: FIXED_TWO_HOURS_AGO, finalDate: FIXED_NOW, customerNote: 'Call before arrival' }
   ],
   inventory: [
-    { id: 'inv-1', itemName: 'Engine Oil', quantity: 200, updatedAt: FIXED_NOW },
-    { id: 'inv-2', itemName: 'Tires', quantity: 120, updatedAt: FIXED_NOW },
-    { id: 'inv-3', itemName: 'Brake Pads', quantity: 45, updatedAt: FIXED_NOW },
+    { id: 'inv-1', itemName: 'Engine Oil', quantity: 200, unit: 'Liters', updatedAt: FIXED_NOW },
+    { id: 'inv-2', itemName: 'Tires', quantity: 120, unit: 'Pcs', updatedAt: FIXED_NOW },
+    { id: 'inv-3', itemName: 'Brake Pads', quantity: 45, unit: 'Sets', updatedAt: FIXED_NOW },
   ],
   logs: [
     { id: 'log-1', type: 'MANUAL', message: 'System initialized', timestamp: FIXED_NOW }
@@ -110,12 +114,14 @@ export const useStore = create<GarageState>((set, get) => ({
           const invItem = newInventory.find(i => i.itemName.toLowerCase() === item.name.toLowerCase());
           if (invItem) {
             invItem.quantity += item.quantity;
+            invItem.unit = item.unit || invItem.unit;
             invItem.updatedAt = new Date().toISOString();
           } else {
             newInventory.push({
               id: generateId(),
               itemName: item.name,
               quantity: item.quantity,
+              unit: item.unit,
               updatedAt: new Date().toISOString()
             });
           }
@@ -182,7 +188,7 @@ export const useStore = create<GarageState>((set, get) => ({
     });
   },
 
-  updateInventoryManual: (itemName, quantity, difference) => {
+  updateInventoryManual: (itemName, quantity, difference, unit) => {
     set((state) => {
       const newInventory = [...state.inventory];
       const invItemIndex = newInventory.findIndex(i => i.itemName.toLowerCase() === itemName.toLowerCase());
@@ -191,6 +197,7 @@ export const useStore = create<GarageState>((set, get) => ({
         newInventory[invItemIndex] = {
           ...newInventory[invItemIndex],
           quantity,
+          unit: unit || newInventory[invItemIndex].unit,
           updatedAt: new Date().toISOString()
         };
       } else {
@@ -198,6 +205,7 @@ export const useStore = create<GarageState>((set, get) => ({
           id: generateId(),
           itemName,
           quantity,
+          unit,
           updatedAt: new Date().toISOString()
         });
       }

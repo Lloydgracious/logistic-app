@@ -10,15 +10,15 @@ import { getWaitingDays } from "@/lib/utils";
 const AnimatedCar = dynamic(() => import("@/components/AnimatedCar").then(mod => mod.AnimatedCar), { ssr: false });
 
 const statusConfig: Record<IncomingStatus, { label: string; color: string; progress: number }> = {
-  ON_THE_WAY: { label: "On the way", color: "text-blue-400 bg-blue-400/10 border-blue-400/20", progress: 33 },
-  AT_BRIDGE: { label: "At Bridge", color: "text-orange-400 bg-orange-400/10 border-orange-400/20", progress: 66 },
-  IN_GARAGE: { label: "In Garage", color: "text-green-400 bg-green-400/10 border-green-400/20", progress: 100 },
+  ON_THE_WAY: { label: "On the way", color: "text-blue-600 bg-blue-50 border-blue-200", progress: 33 },
+  AT_BRIDGE: { label: "At Bridge", color: "text-orange-600 bg-orange-50 border-orange-200", progress: 66 },
+  IN_GARAGE: { label: "In Garage", color: "text-green-600 bg-green-50 border-green-200", progress: 100 },
 };
 
 function StatusBadge({ status }: { status: IncomingStatus }) {
   const config = statusConfig[status];
   return (
-    <span className={`px-3 py-1 rounded-full text-xs font-medium border ${config.color} whitespace-nowrap`}>
+    <span className={`px-3 py-1 rounded-full text-xs font-bold border ${config.color} whitespace-nowrap shadow-sm`}>
       {config.label}
     </span>
   );
@@ -32,15 +32,16 @@ export default function IncomingPage() {
   const [newSupplier, setNewSupplier] = useState("");
   const [newArrivalDate, setNewArrivalDate] = useState("");
   const [newDuration, setNewDuration] = useState("24");
-  const [items, setItems] = useState([{ name: "", quantity: "" }]);
+  const [newNote, setNewNote] = useState("");
+  const [items, setItems] = useState([{ name: "", quantity: "", unit: "" }]);
 
-  const addItemRow = () => setItems([...items, { name: "", quantity: "" }]);
+  const addItemRow = () => setItems([...items, { name: "", quantity: "", unit: "" }]);
   const removeItemRow = (idx: number) => {
     if (items.length > 1) setItems(items.filter((_, i) => i !== idx));
   };
-  const updateItemRow = (idx: number, field: 'name' | 'quantity', val: string) => {
+  const updateItemRow = (idx: number, field: 'name' | 'quantity' | 'unit', val: string) => {
     const updated = [...items];
-    updated[idx][field] = val;
+    (updated[idx] as any)[field] = val;
     setItems(updated);
   };
 
@@ -50,9 +51,14 @@ export default function IncomingPage() {
     addIncoming({
       carNumber: newCarNumber,
       supplierName: newSupplier,
-      items: items.map(i => ({ name: i.name, quantity: parseInt(i.quantity) || 0 })),
+      items: items.map(i => ({ 
+        name: i.name, 
+        quantity: parseInt(i.quantity) || 0,
+        unit: i.unit 
+      })),
       arrivalTime: newArrivalDate ? new Date(newArrivalDate).toISOString() : undefined,
-      durationHours: parseInt(newDuration) || 24
+      durationHours: parseInt(newDuration) || 24,
+      note: newNote
     });
     
     setShowAdd(false);
@@ -60,7 +66,8 @@ export default function IncomingPage() {
     setNewSupplier("");
     setNewArrivalDate("");
     setNewDuration("24");
-    setItems([{ name: "", quantity: "" }]);
+    setNewNote("");
+    setItems([{ name: "", quantity: "", unit: "" }]);
   };
 
   const handleNextStatus = (id: string, current: IncomingStatus) => {
@@ -69,14 +76,17 @@ export default function IncomingPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Incoming Shipments</h2>
+    <div className="space-y-6 max-w-7xl mx-auto pb-20 animate-in fade-in slide-in-from-bottom-8 duration-500">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+           <h2 className="text-3xl md:text-4xl font-black text-slate-800 dark:text-slate-100 tracking-tighter outfit uppercase">Incoming <span className="text-rose-500 italic">Fleet</span></h2>
+           <p className="text-[10px] font-black text-slate-400 dark:text-zinc-600 uppercase tracking-[0.2em] mt-1">Live shipment tracking & arrival manifesting.</p>
+        </div>
         <button 
-          onClick={() => setShowAdd(true)}
-          className="flex items-center gap-2 bg-[#00d1ff] hover:bg-[#ff8c40] text-white px-4 py-2 rounded-xl font-medium transition-all shadow-[0_0_15px_rgba(255,106,0,0.4)]"
+          onClick={() => setShowAdd(!showAdd)}
+          className="flex items-center gap-2 bg-slate-950 dark:bg-white text-white dark:text-black px-6 py-3 rounded-none font-black text-xs uppercase tracking-widest transition-all shadow-xl hover:bg-rose-600 dark:hover:bg-rose-500 hover:text-white"
         >
-          <Plus className="w-5 h-5" /> Add Incoming
+          <Plus className={`w-4 h-4 transition-transform ${showAdd ? 'rotate-45' : ''}`} /> {showAdd ? 'Close' : 'Add Shipment'}
         </button>
       </div>
 
@@ -86,50 +96,65 @@ export default function IncomingPage() {
             initial={{ opacity: 0, height: 0 }} 
             animate={{ opacity: 1, height: 'auto' }} 
             exit={{ opacity: 0, height: 0 }}
-            className="glass rounded-2xl p-6 border border-[#00d1ff]/30"
+            className="overflow-hidden"
           >
-            <h3 className="text-lg font-semibold mb-4">New Shipment</h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <div className="space-y-1">
-                <label className="text-[10px] text-gray-500 uppercase font-bold px-1">Car Identification</label>
-                <input value={newCarNumber} onChange={e=>setNewCarNumber(e.target.value)} placeholder="Car Number" className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-[#00d1ff]" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] text-gray-500 uppercase font-bold px-1">Supplier / Origin</label>
-                <input value={newSupplier} onChange={e=>setNewSupplier(e.target.value)} placeholder="Supplier Name" className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-[#00d1ff]" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] text-gray-500 uppercase font-bold px-1 flex items-center gap-1">Process Start <Calendar className="w-3 h-3" /></label>
-                <input value={newArrivalDate} type="date" onChange={e=>setNewArrivalDate(e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-[#00d1ff] [color-scheme:dark]" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] text-gray-500 uppercase font-bold px-1 flex items-center gap-1">Duration (Hours) <Timer className="w-3 h-3" /></label>
-                <input value={newDuration} type="number" onChange={e=>setNewDuration(e.target.value)} placeholder="24" className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-[#00d1ff]" />
-              </div>
-            </div>
+             <div className="saas-card p-6 border-2 border-indigo-500/20 bg-indigo-50/10 mb-6 rounded-none">
+               <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 italic mb-6">New Shipment Protocol</h3>
+               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                 <div className="space-y-1.5">
+                   <label className="text-[10px] text-slate-500 uppercase font-black px-1 tracking-wider">Car Number</label>
+                   <input value={newCarNumber} onChange={e=>setNewCarNumber(e.target.value)} placeholder="ABC-123" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium italic" />
+                 </div>
+                 <div className="space-y-1.5">
+                   <label className="text-[10px] text-slate-500 uppercase font-black px-1 tracking-wider">Supplier</label>
+                   <input value={newSupplier} onChange={e=>setNewSupplier(e.target.value)} placeholder="Origin / Supplier" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium" />
+                 </div>
+                 <div className="space-y-1.5">
+                   <label className="text-[10px] text-slate-500 uppercase font-black px-1 tracking-wider flex items-center gap-1">Start Date</label>
+                   <input value={newArrivalDate} type="date" onChange={e=>setNewArrivalDate(e.target.value)} className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-slate-800 dark:text-slate-100 text-sm outline-none transition-all font-medium" />
+                 </div>
+                 <div className="space-y-1.5">
+                   <label className="text-[10px] text-slate-500 uppercase font-black px-1 tracking-wider flex items-center gap-1">Hours</label>
+                   <input value={newDuration} type="number" onChange={e=>setNewDuration(e.target.value)} placeholder="24" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-slate-800 dark:text-slate-100 text-sm outline-none transition-all font-medium" />
+                 </div>
+               </div>
 
-            <div className="space-y-3 mb-6">
-              <div className="flex justify-between items-center px-1">
-                <label className="text-xs text-gray-400 font-bold uppercase">Shipment Cargo / Items</label>
-                <button onClick={addItemRow} className="text-[#00d1ff] text-xs hover:underline flex items-center gap-1 font-bold">
-                  + Add Item Row
-                </button>
-              </div>
-              {items.map((it, idx) => (
-                <div key={idx} className="flex gap-3 animate-in fade-in slide-in-from-left-2 duration-300">
-                  <input value={it.name} onChange={e=>updateItemRow(idx, 'name', e.target.value)} placeholder="Item Name" className="flex-1 bg-black/30 border border-white/5 rounded-lg px-4 py-2 text-white text-sm outline-none focus:border-white/20" />
-                  <input value={it.quantity} type="number" onChange={e=>updateItemRow(idx, 'quantity', e.target.value)} placeholder="Qty" className="w-24 bg-black/30 border border-white/5 rounded-lg px-4 py-2 text-white text-sm outline-none focus:border-white/20" />
-                  <button onClick={() => removeItemRow(idx)} disabled={items.length === 1} className="p-2 text-gray-600 hover:text-red-400 disabled:opacity-0 transition-colors">
-                    <Trash className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
+               <div className="space-y-1.5 mb-6">
+                 <label className="text-[10px] text-slate-500 uppercase font-black px-1 tracking-wider">Additional Notes</label>
+                 <textarea 
+                   value={newNote} 
+                   onChange={e=>setNewNote(e.target.value)} 
+                   placeholder="Special instructions, gate pass details, etc..." 
+                   className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium h-20 resize-none"
+                 />
+               </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-white/5">
-              <button onClick={() => setShowAdd(false)} className="px-5 py-2 rounded-xl bg-white/5 hover:bg-white/10 transition font-medium text-sm">Cancel</button>
-              <button onClick={handleAdd} className="px-5 py-2 rounded-xl bg-[#00d1ff] hover:bg-orange-600 transition shadow-[0_0_10px_rgba(255,106,0,0.5)] font-bold text-sm">Save Shipment</button>
-            </div>
+               <div className="bg-white dark:bg-black/40 rounded-none border border-slate-200 dark:border-slate-800 p-5 mb-8">
+                 <div className="flex justify-between items-center mb-4">
+                   <label className="text-[10px] text-slate-800 dark:text-slate-100 font-black uppercase tracking-widest">Expected Cargo</label>
+                   <button onClick={addItemRow} className="text-indigo-500 text-[10px] hover:underline transition-colors flex items-center gap-1 font-black uppercase tracking-wider">
+                     + Add Item Row
+                   </button>
+                 </div>
+                 <div className="space-y-3">
+                   {items.map((it, idx) => (
+                     <div key={idx} className="flex gap-3 items-center group">
+                       <input value={it.name} onChange={e=>updateItemRow(idx, 'name', e.target.value)} placeholder="Item Name" className="flex-1 bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
+                       <input value={it.quantity} type="number" onChange={e=>updateItemRow(idx, 'quantity', e.target.value)} placeholder="Qty" className="w-24 bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
+                       <input value={it.unit} onChange={e=>updateItemRow(idx, 'unit', e.target.value)} placeholder="Unit" className="w-28 bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
+                       <button onClick={() => removeItemRow(idx)} disabled={items.length === 1} className="p-2 text-slate-300 hover:text-red-500 disabled:opacity-0 transition-all">
+                         <Trash className="w-4 h-4" />
+                       </button>
+                     </div>
+                   ))}
+                 </div>
+               </div>
+
+               <div className="flex justify-end gap-3 pt-2">
+                 <button onClick={() => setShowAdd(false)} className="px-6 py-3 rounded-none text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-900 transition-all font-bold text-xs uppercase tracking-widest">Cancel</button>
+                 <button onClick={handleAdd} className="px-8 py-3 rounded-none bg-slate-950 dark:bg-white text-white dark:text-black hover:bg-rose-600 dark:hover:bg-rose-500 hover:text-white transition-all shadow-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2">Save Shipment <ArrowRight className="w-4 h-4" /></button>
+               </div>
+             </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -139,58 +164,45 @@ export default function IncomingPage() {
           <motion.div 
             key={item.id}
             layout
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="glass rounded-2xl p-6 border border-white/5 glow-hover"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="saas-card p-0 rounded-none border-l-4 border-l-rose-500 overflow-hidden"
           >
-            <div className="flex flex-col md:flex-row justify-between gap-6">
+            <div className="flex flex-col md:flex-row justify-between gap-0">
               
-              <div className="flex-1 space-y-4">
+              <div className="flex-1 p-6 space-y-5">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center">
-                    <Truck className="w-6 h-6 text-gray-400" />
+                  <div className="w-12 h-12 rounded-none bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center border border-rose-100 dark:border-rose-800">
+                    <Truck className="w-6 h-6 text-rose-600 dark:text-rose-400" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold">{item.carNumber}</h3>
-                    <p className="text-sm text-gray-400">{item.supplierName}</p>
+                    <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 outfit uppercase tracking-tight italic">{item.carNumber}</h3>
+                    <p className="text-xs font-bold text-slate-400 dark:text-zinc-600 uppercase tracking-widest">{item.supplierName}</p>
+                    {item.note && (
+                      <div className="mt-2 text-xs bg-cyan-50 dark:bg-cyan-900/10 text-cyan-700 dark:text-cyan-400 p-2 rounded-none border border-cyan-100 dark:border-cyan-900/30 italic font-medium">
+                        " {item.note} "
+                      </div>
+                    )}
                   </div>
                   <div className="ml-auto flex flex-col items-end gap-2">
                     <StatusBadge status={item.status} />
-                    {item.status !== 'IN_GARAGE' && (() => {
-                        const startMs = new Date(item.arrivalTime).getTime();
-                        const etaMs = startMs + item.durationHours * 60 * 60 * 1000;
-                        const remainingMs = etaMs - Date.now();
-                        const remainingHrs = Math.abs(Math.round(remainingMs / (1000 * 60 * 60)));
-                        const remainingDays = Math.floor(Math.abs(remainingMs) / (1000 * 60 * 60 * 24));
-                        const isOverdue = remainingMs < 0;
-                        const elapsed = Math.max(0, Date.now() - startMs);
-                        const elapsedDays = Math.floor(elapsed / (1000 * 60 * 60 * 24));
-                        return (
-                          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${isOverdue ? 'text-red-400 border-red-400/20 bg-red-400/5' : remainingHrs < 6 ? 'text-yellow-400 border-yellow-400/20 bg-yellow-400/5' : 'text-blue-400 border-blue-400/20 bg-blue-400/5'}`}>
-                            {isOverdue 
-                              ? `Overdue by ${remainingDays > 0 ? remainingDays + 'd ' : ''}${remainingHrs % 24}h` 
-                              : `ETA in ${remainingDays > 0 ? remainingDays + 'd ' : ''}${remainingHrs % 24}h`}
-                            {elapsedDays > 0 && <span className="ml-1 opacity-60">· {elapsedDays}d waiting</span>}
-                          </span>
-                        );
-                      })()}
                   </div>
                 </div>
 
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Items Included:</p>
+                  <p className="text-[10px] font-black text-slate-400 dark:text-zinc-600 mb-2 uppercase tracking-[0.2em]">Expected Cargo</p>
                   <div className="flex flex-wrap gap-2">
                     {item.items.map((i, idx) => (
-                      <div key={idx} className="px-3 py-1 bg-black/40 rounded-lg text-sm">
-                        <span className="text-gray-400">{i.name}:</span> <span className="font-bold">{i.quantity}</span>
+                      <div key={idx} className="px-3 py-1.5 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-slate-800 rounded-none text-xs shadow-sm cursor-default group">
+                        <span className="text-slate-500 dark:text-zinc-500 font-medium uppercase">{i.name}:</span> <span className="font-black text-rose-600 dark:text-rose-400 text-sm ml-1">{i.quantity}</span> <span className="text-[9px] text-slate-400 uppercase font-black ml-1">{i.unit || 'UNITS'}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="w-full bg-black/50 h-2 rounded-full overflow-hidden">
+                <div className="w-full bg-slate-100 dark:bg-zinc-900 h-1.5 rounded-none overflow-hidden">
                   <motion.div 
-                    className="h-full bg-gradient-to-r from-blue-500 via-[#00d1ff] to-green-500"
+                    className="h-full bg-rose-500"
                     initial={{ width: `${item.status === 'IN_GARAGE' ? 100 : Math.round((Date.now() - new Date(item.arrivalTime).getTime()) / (item.durationHours * 60 * 60 * 10))}%` }}
                     animate={{ width: `${item.status === 'IN_GARAGE' ? 100 : Math.min(100, Math.round(((Date.now() - new Date(item.arrivalTime).getTime()) / (item.durationHours * 60 * 60 * 1000)) * 100))}%` }}
                     transition={{ duration: 0.5, ease: "easeInOut" }}
@@ -198,8 +210,9 @@ export default function IncomingPage() {
                 </div>
               </div>
 
-              <div className="w-full md:w-64 flex flex-col gap-4 border-t md:border-t-0 md:border-l border-white/10 md:pl-6 pt-4 md:pt-0">
-                <div className="h-32 rounded-xl overflow-hidden glass relative">
+              <div className="w-full md:w-64 flex flex-col gap-0 border-t md:border-t-0 md:border-l border-slate-100 dark:border-slate-800">
+                <div className="h-full min-h-[140px] relative shadow-inner bg-slate-50 dark:bg-zinc-900 flex items-center justify-center">
+                   <div className="absolute inset-0 bg-indigo-500/5 mix-blend-overlay z-0 pointer-events-none" />
                    <AnimatedCar 
                     type={item.status === 'IN_GARAGE' ? 'depart' : 'arrive'} 
                     progress={item.status === 'IN_GARAGE' ? 1.0 : Math.min(0.9, (Date.now() - new Date(item.arrivalTime).getTime()) / (item.durationHours * 60 * 60 * 1000))} 
@@ -209,9 +222,9 @@ export default function IncomingPage() {
                 {item.status !== 'IN_GARAGE' && (
                   <button 
                     onClick={() => handleNextStatus(item.id, item.status)}
-                    className="w-full py-2 bg-white/5 hover:bg-white/10 rounded-xl flex items-center justify-center gap-2 transition"
+                    className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-black flex items-center justify-center gap-2 transition-all uppercase tracking-widest text-[10px]"
                   >
-                    Progress Status <ArrowRight className="w-4 h-4" />
+                    Transition <ArrowRight className="w-4 h-4" />
                   </button>
                 )}
               </div>

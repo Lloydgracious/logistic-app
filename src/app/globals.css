@@ -1,41 +1,74 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #020617;
-  --foreground: #f8fafc;
-  --primary: #00d1ff; /* Electric Cyan */
-  --primary-glow: rgba(0, 209, 255, 0.25);
-  --secondary: #0f172a;
+  --background: #f1f5f9;
+  --foreground: #1e293b;
+  --primary: #6366f1; /* Indigo */
+  --secondary: #64748b;
+  --accent: #f43f5e; /* Rose */
   --success: #10b981;
-  --danger: #f43f5e;
+  --danger: #ef4444;
+  --vibrant-cyan: #06b6d4;
+  --vibrant-purple: #a855f7;
+  --vibrant-orange: #f59e0b;
+}
+
+.dark {
+  --background: #050505;
+  --foreground: #fafafa;
 }
 
 body {
   color: var(--foreground);
-  background: radial-gradient(circle at 50% 0%, #0f172a 0%, #020617 100%);
-  background-attachment: fixed;
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--background);
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6, .outfit {
+  font-family: 'Outfit', sans-serif;
 }
 
 @layer utilities {
-  .glow-hover {
-    transition: all 0.3s ease;
-  }
-  .glow-hover:hover {
-    box-shadow: 0 0 15px var(--primary-glow);
-    border-color: var(--primary);
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-[#6366f1] via-[#f43f5e] to-[#06b6d4];
   }
   
-  .glow-text {
-    text-shadow: 0 0 10px var(--primary-glow);
+  .bg-grid-pattern {
+    background-image: radial-gradient(circle, #00000010 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .dark .bg-grid-pattern {
+    background-image: radial-gradient(circle, #ffffff10 1px, transparent 1px);
   }
 }
 
-/* Glassmorphism utils */
-.glass {
-  background: rgba(26, 26, 26, 0.7);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+/* Base Sharp SaaS Cards */
+.saas-card {
+  @apply bg-white dark:bg-black border border-slate-200 dark:border-zinc-800 rounded-none shadow-sm transition-all duration-300;
+}
+
+.saas-hover {
+  @apply hover:shadow-xl hover:border-slate-300 dark:hover:border-zinc-700 hover:-translate-y-1;
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }

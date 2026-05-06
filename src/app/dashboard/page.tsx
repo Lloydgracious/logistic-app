@@ -38,18 +38,18 @@ function Counter({ value }: { value: number }) {
 }
 
 export default function Dashboard() {
-  const { incomingList, orders, inventory } = useStore();
+  const { incomingList, orders, inventory, containerStock } = useStore();
 
   const totalInventory = inventory.reduce((acc, item) => acc + item.quantity, 0);
-  const lowStock = inventory.filter(item => item.quantity < 50).length;
   const incomingToday = incomingList.filter(i => i.status !== 'IN_GARAGE').length;
   const ordersPending = orders.filter(o => o.status !== 'DELIVERED').length;
+  const activeContainers = containerStock.filter(item => item.remainingQuantity > 0).length;
 
   const statCards = [
-    { title: "Total Inventory", value: totalInventory, icon: Package, color: "border-indigo-500 bg-indigo-50/10", iconColor: "text-indigo-600", href: "/inventory" },
+    { title: "Units Left", value: totalInventory, icon: Package, color: "border-indigo-500 bg-indigo-50/10", iconColor: "text-indigo-600", href: "/inventory" },
     { title: "Incoming Vehicles", value: incomingToday, icon: Truck, color: "border-rose-500 bg-rose-50/10", iconColor: "text-rose-600", href: "/incoming" },
     { title: "Pending Orders", value: ordersPending, icon: ShoppingCart, color: "border-cyan-500 bg-cyan-50/10", iconColor: "text-cyan-600", href: "/orders" },
-    { title: "Low Stock Alerts", value: lowStock, icon: AlertTriangle, color: "border-amber-500 bg-amber-50/10", iconColor: "text-amber-600", href: "/inventory" },
+    { title: "Stock Containers", value: activeContainers, icon: AlertTriangle, color: "border-amber-500 bg-amber-50/10", iconColor: "text-amber-600", href: "/inventory" },
   ];
 
   return (
@@ -127,7 +127,7 @@ export default function Dashboard() {
         <div className="p-8 saas-card flex flex-col bg-white dark:bg-black border-2 border-indigo-500/10 rounded-none shadow-2xl">
           <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100 dark:border-slate-800">
             <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 flex items-center gap-3 outfit uppercase tracking-tight italic">
-              <div className="w-2 h-6 bg-indigo-500" /> Inventory Alerts
+              <div className="w-2 h-6 bg-indigo-500" /> Stock by Product
             </h3>
             <Link href="/inventory" className="text-[10px] bg-indigo-600 text-white px-3 py-1 font-black uppercase tracking-widest hover:bg-rose-500 transition-colors shadow-lg shadow-indigo-500/20">MANAGE ALL</Link>
           </div>
@@ -143,7 +143,7 @@ export default function Dashboard() {
                       </div>
                       <div>
                         <p className="font-black text-slate-800 dark:text-slate-100 text-xs uppercase tracking-tight group-hover:text-rose-500 transition-colors">{item.itemName}</p>
-                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Asset Ref #{item.id.slice(0, 4)}</p>
+                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{containerStock.filter(row => row.productName.toLowerCase() === item.itemName.toLowerCase() && row.remainingQuantity > 0).length} container sources</p>
                       </div>
                     </div>
                     <div className="flex flex-col items-end">
@@ -160,7 +160,7 @@ export default function Dashboard() {
         <div className="p-8 saas-card flex flex-col bg-white dark:bg-black border-2 border-rose-500/10 rounded-none shadow-2xl">
           <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100 dark:border-slate-800">
             <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 flex items-center gap-3 outfit uppercase tracking-tight italic">
-              <div className="w-2 h-6 bg-rose-500" /> Active Shipments
+              <div className="w-2 h-6 bg-rose-500" /> Active Containers
             </h3>
             <Link href="/incoming" className="text-[10px] bg-rose-600 text-white px-3 py-1 font-black uppercase tracking-widest hover:bg-indigo-600 transition-colors shadow-lg shadow-rose-500/20">LIVE OPS</Link>
           </div>
@@ -175,7 +175,7 @@ export default function Dashboard() {
                     </div>
                     <div className="flex-1">
                       <div className="flex justify-between items-center mb-1.5">
-                        <p className="font-black text-slate-800 dark:text-white text-xs uppercase tracking-tight italic">SHIPMENT ID: {item.carNumber}</p>
+                        <p className="font-black text-slate-800 dark:text-white text-xs uppercase tracking-tight italic">{item.containerNumber} / {item.carNumber}</p>
                         <span className="text-[9px] font-black px-2 py-0.5 bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 uppercase tracking-widest border border-slate-200 dark:border-slate-800">{item.status.replace(/_/g, ' ')}</span>
                       </div>
                       <div className="w-full bg-slate-100 dark:bg-zinc-900 h-1.5 overflow-hidden">

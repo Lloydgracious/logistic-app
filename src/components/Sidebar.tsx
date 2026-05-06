@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, LogIn, ShoppingCart, Package, ScrollText } from "lucide-react";
+import { LayoutDashboard, LogIn, ShoppingCart, Package, ScrollText, Users } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -11,6 +11,7 @@ const links = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Incoming", href: "/incoming", icon: LogIn },
   { name: "Orders", href: "/orders", icon: ShoppingCart },
+  { name: "Customers", href: "/customers", icon: Users },
   { name: "Inventory", href: "/inventory", icon: Package },
   { name: "Logs", href: "/logs", icon: ScrollText },
 ];

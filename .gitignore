@@ -24,6 +24,10 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+next-dev*.log
+
+# local tool cache
+.fallow/
 
 # local env files
 .env*.local

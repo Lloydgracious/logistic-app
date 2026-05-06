@@ -25,21 +25,22 @@ function StatusBadge({ status }: { status: IncomingStatus }) {
 }
 
 export default function IncomingPage() {
-  const { incomingList, updateIncomingStatus, addIncoming } = useStore();
+  const { incomingList, inventorySections, updateIncomingStatus, addIncoming } = useStore();
   const [showAdd, setShowAdd] = useState(false);
 
+  const [newContainerNumber, setNewContainerNumber] = useState("");
   const [newCarNumber, setNewCarNumber] = useState("");
   const [newSupplier, setNewSupplier] = useState("");
   const [newArrivalDate, setNewArrivalDate] = useState("");
-  const [newDuration, setNewDuration] = useState("24");
   const [newNote, setNewNote] = useState("");
-  const [items, setItems] = useState([{ name: "", quantity: "", unit: "" }]);
+  const defaultSectionId = inventorySections[0]?.id || "";
+  const [items, setItems] = useState([{ name: "", quantity: "", unit: "", inventorySectionId: defaultSectionId, containerNumber: "" }]);
 
-  const addItemRow = () => setItems([...items, { name: "", quantity: "", unit: "" }]);
+  const addItemRow = () => setItems([...items, { name: "", quantity: "", unit: "", inventorySectionId: defaultSectionId, containerNumber: "" }]);
   const removeItemRow = (idx: number) => {
     if (items.length > 1) setItems(items.filter((_, i) => i !== idx));
   };
-  const updateItemRow = (idx: number, field: 'name' | 'quantity' | 'unit', val: string) => {
+  const updateItemRow = (idx: number, field: 'name' | 'quantity' | 'unit' | 'inventorySectionId' | 'containerNumber', val: string) => {
     const updated = [...items];
     if (field === 'quantity') {
       updated[idx].quantity = val;
@@ -47,33 +48,45 @@ export default function IncomingPage() {
       updated[idx].name = val;
     } else if (field === 'unit') {
       updated[idx].unit = val;
+    } else if (field === 'inventorySectionId') {
+      updated[idx].inventorySectionId = val;
+    } else if (field === 'containerNumber') {
+      updated[idx].containerNumber = val;
     }
     setItems(updated);
   };
 
   const handleAdd = () => {
-    if (!newCarNumber || !newSupplier || items.some(i => !i.name || !i.quantity)) return;
+    if (!newContainerNumber || !newCarNumber || !newSupplier || items.some(i => !i.name || !i.quantity || !i.inventorySectionId)) return;
     
     addIncoming({
+      containerNumber: newContainerNumber,
       carNumber: newCarNumber,
       supplierName: newSupplier,
-      items: items.map(i => ({ 
-        name: i.name, 
+      items: items.map(i => {
+        const section = inventorySections.find((inventorySection) => inventorySection.id === i.inventorySectionId);
+
+        return {
+          name: i.name,
+          inventorySectionId: i.inventorySectionId,
+          inventorySectionTitle: section?.title,
+          containerNumber: i.containerNumber || newContainerNumber,
         quantity: parseInt(i.quantity) || 0,
-        unit: i.unit 
-      })),
+          unit: i.unit
+        };
+      }),
       arrivalTime: newArrivalDate ? new Date(newArrivalDate).toISOString() : undefined,
-      durationHours: parseInt(newDuration) || 24,
+      durationHours: 24,
       note: newNote
     });
     
     setShowAdd(false);
+    setNewContainerNumber("");
     setNewCarNumber("");
     setNewSupplier("");
     setNewArrivalDate("");
-    setNewDuration("24");
     setNewNote("");
-    setItems([{ name: "", quantity: "", unit: "" }]);
+    setItems([{ name: "", quantity: "", unit: "", inventorySectionId: defaultSectionId, containerNumber: "" }]);
   };
 
   const handleNextStatus = (id: string, current: IncomingStatus) => {
@@ -108,6 +121,10 @@ export default function IncomingPage() {
                <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 italic mb-6">New Shipment Protocol</h3>
                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                  <div className="space-y-1.5">
+                   <label className="text-[10px] text-slate-500 uppercase font-black px-1 tracking-wider">Container Number</label>
+                   <input value={newContainerNumber} onChange={e=>setNewContainerNumber(e.target.value)} placeholder="CNT-004" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium italic" />
+                 </div>
+                 <div className="space-y-1.5">
                    <label className="text-[10px] text-slate-500 uppercase font-black px-1 tracking-wider">Car Number</label>
                    <input value={newCarNumber} onChange={e=>setNewCarNumber(e.target.value)} placeholder="ABC-123" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium italic" />
                  </div>
@@ -118,10 +135,6 @@ export default function IncomingPage() {
                  <div className="space-y-1.5">
                    <label className="text-[10px] text-slate-500 uppercase font-black px-1 tracking-wider flex items-center gap-1">Start Date</label>
                    <input value={newArrivalDate} type="date" onChange={e=>setNewArrivalDate(e.target.value)} className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-slate-800 dark:text-slate-100 text-sm outline-none transition-all font-medium" />
-                 </div>
-                 <div className="space-y-1.5">
-                   <label className="text-[10px] text-slate-500 uppercase font-black px-1 tracking-wider flex items-center gap-1">Hours</label>
-                   <input value={newDuration} type="number" onChange={e=>setNewDuration(e.target.value)} placeholder="24" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-slate-800 dark:text-slate-100 text-sm outline-none transition-all font-medium" />
                  </div>
                </div>
 
@@ -144,15 +157,26 @@ export default function IncomingPage() {
                  </div>
                  <div className="space-y-3">
                     {items.map((it, idx) => (
-                      <div key={idx} className="flex flex-col md:flex-row gap-3 items-start md:items-center group">
-                        <input value={it.name} onChange={e=>updateItemRow(idx, 'name', e.target.value)} placeholder="Item Name" className="w-full md:flex-1 bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
-                        <div className="flex gap-3 w-full md:w-auto">
-                          <input value={it.quantity} type="number" onChange={e=>updateItemRow(idx, 'quantity', e.target.value)} placeholder="Qty" className="flex-1 md:w-24 bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
-                          <input value={it.unit} onChange={e=>updateItemRow(idx, 'unit', e.target.value)} placeholder="Unit" className="flex-1 md:w-28 bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
-                          <button onClick={() => removeItemRow(idx)} className="md:opacity-0 group-hover:opacity-100 p-2.5 text-slate-400 hover:text-rose-500 transition-all border border-transparent hover:border-rose-100">
-                            <Trash className="w-4 h-4" />
-                          </button>
-                        </div>
+                      <div key={idx} className="grid grid-cols-1 lg:grid-cols-[1.25fr_1fr_0.9fr_0.6fr_0.6fr_auto] gap-3 items-start lg:items-center group">
+                        <input value={it.name} onChange={e=>updateItemRow(idx, 'name', e.target.value)} placeholder="Item Name" className="w-full bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
+                        <select
+                          value={it.inventorySectionId || defaultSectionId}
+                          onChange={e=>updateItemRow(idx, 'inventorySectionId', e.target.value)}
+                          className="w-full bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all font-black uppercase"
+                        >
+                          <option value="">Choose inventory header</option>
+                          {inventorySections.map((section) => (
+                            <option key={section.id} value={section.id}>{section.title}</option>
+                          ))}
+                        </select>
+                        <input value={it.containerNumber} onChange={e=>updateItemRow(idx, 'containerNumber', e.target.value)} placeholder="Item Container" className="w-full bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
+                        <input value={it.quantity} type="number" onChange={e=>updateItemRow(idx, 'quantity', e.target.value)} placeholder="Qty" className="w-full bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
+                        <input value={it.unit} onChange={e=>updateItemRow(idx, 'unit', e.target.value)} placeholder="Unit" className="w-full bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
+                        <div className="flex lg:justify-end">
+                          <button onClick={() => removeItemRow(idx)} className="lg:opacity-0 group-hover:opacity-100 p-2.5 text-slate-400 hover:text-rose-500 transition-all border border-transparent hover:border-rose-100">
+                              <Trash className="w-4 h-4" />
+                            </button>
+                          </div>
                       </div>
                     ))}
                  </div>
@@ -184,8 +208,8 @@ export default function IncomingPage() {
                     <Truck className="w-6 h-6 text-rose-600 dark:text-rose-400" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 outfit uppercase tracking-tight italic">{item.carNumber}</h3>
-                    <p className="text-xs font-bold text-slate-400 dark:text-zinc-600 uppercase tracking-widest">{item.supplierName}</p>
+                    <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 outfit uppercase tracking-tight italic">{item.containerNumber}</h3>
+                    <p className="text-xs font-bold text-slate-400 dark:text-zinc-600 uppercase tracking-widest">{item.supplierName} / Car {item.carNumber}</p>
                     {item.note && (
                       <div className="mt-2 text-xs bg-cyan-50 dark:bg-cyan-900/10 text-cyan-700 dark:text-cyan-400 p-2 rounded-none border border-cyan-100 dark:border-cyan-900/30 italic font-medium">
                         &quot; {item.note} &quot;
@@ -203,6 +227,8 @@ export default function IncomingPage() {
                     {item.items.map((i, idx) => (
                       <div key={idx} className="px-3 py-1.5 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-slate-800 rounded-none text-xs shadow-sm cursor-default group">
                         <span className="text-slate-500 dark:text-zinc-500 font-medium uppercase">{i.name}:</span> <span className="font-black text-rose-600 dark:text-rose-400 text-sm ml-1">{i.quantity}</span> <span className="text-[9px] text-slate-400 uppercase font-black ml-1">{i.unit || 'UNITS'}</span>
+                        {i.inventorySectionTitle && <span className="block text-[9px] text-indigo-500 uppercase font-black mt-1">{i.inventorySectionTitle}</span>}
+                        {i.containerNumber && <span className="block text-[9px] text-slate-400 uppercase font-black mt-1">Container {i.containerNumber}</span>}
                       </div>
                     ))}
                   </div>

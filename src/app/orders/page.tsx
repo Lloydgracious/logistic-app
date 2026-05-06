@@ -4,10 +4,16 @@ import { useStore, OrderStatus } from "@/lib/store";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { getWaitingDays } from "@/lib/utils";
 import { Plus, ArrowRight, ShoppingCart, CheckCircle2, Trash } from "lucide-react";
 
 const AnimatedCar = dynamic(() => import("@/components/AnimatedCar").then(mod => mod.AnimatedCar), { ssr: false });
+
+type OrderDraftItem = {
+  stockId: string;
+  quantity: string;
+};
 
 const statusConfig: Record<OrderStatus, { label: string; color: string; progress: number }> = {
   PENDING: { label: "Pending", color: "text-slate-500 dark:text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-zinc-900 border-slate-200 dark:border-slate-700", progress: 25 },
@@ -26,7 +32,7 @@ function StatusBadge({ status }: { status: OrderStatus }) {
 }
 
 export default function OrdersPage() {
-  const { orders, updateOrderStatus, addOrder } = useStore();
+  const { orders, customers, updateOrderStatus, addOrder, containerStock } = useStore();
   const [showAdd, setShowAdd] = useState(false);
 
   const [customerName, setCustomerName] = useState("");
@@ -34,39 +40,56 @@ export default function OrdersPage() {
   const [orderDate, setOrderDate] = useState("");
   const [finalOrderDate, setFinalOrderDate] = useState("");
   const [customerNote, setCustomerNote] = useState("");
-  const [items, setItems] = useState([{ name: "", quantity: "", unit: "" }]);
+  const [items, setItems] = useState<OrderDraftItem[]>([{ stockId: "", quantity: "" }]);
+  const [formError, setFormError] = useState("");
 
-  const addItemRow = () => setItems([...items, { name: "", quantity: "", unit: "" }]);
+  const availableStock = containerStock.filter((row) => row.remainingQuantity > 0);
+  const existingCustomers = [...customers].sort((a, b) => a.name.localeCompare(b.name));
+
+  const addItemRow = () => setItems([...items, { stockId: "", quantity: "" }]);
   const removeItemRow = (idx: number) => {
     if (items.length > 1) setItems(items.filter((_, i) => i !== idx));
   };
-  const updateItemRow = (idx: number, field: 'name' | 'quantity' | 'unit', val: string) => {
+  const updateItemRow = (idx: number, field: keyof OrderDraftItem, val: string) => {
     const updated = [...items];
-    if (field === 'quantity') {
-      updated[idx].quantity = val;
-    } else if (field === 'name') {
-      updated[idx].name = val;
-    } else if (field === 'unit') {
-      updated[idx].unit = val;
-    }
+    updated[idx] = { ...updated[idx], [field]: val };
     setItems(updated);
+    setFormError("");
   };
 
   const handleAdd = () => {
-    if (!customerName || !carNumber || items.some(i => !i.name || !i.quantity)) return;
+    const trimmedCustomerName = customerName.trim();
+    const trimmedCarNumber = carNumber.trim();
+
+    if (!trimmedCustomerName || !trimmedCarNumber || items.some(i => !i.stockId || !i.quantity)) {
+      setFormError("Please fill client, delivery car, container product, and quantity.");
+      return;
+    }
+
+    const orderItems = items.map((item) => {
+      const stockRow = containerStock.find((row) => row.id === item.stockId);
+      return {
+        name: stockRow?.productName || "",
+        quantity: parseInt(item.quantity) || 0,
+        unit: stockRow?.unit,
+        containerId: stockRow?.id,
+        containerNumber: stockRow?.containerNumber,
+      };
+    });
     
-    addOrder({
-      customerName,
-      carNumber,
-      items: items.map(i => ({ 
-        name: i.name, 
-        quantity: parseInt(i.quantity) || 0,
-        unit: i.unit 
-      })),
+    const result = addOrder({
+      customerName: trimmedCustomerName,
+      carNumber: trimmedCarNumber,
+      items: orderItems,
       orderTime: orderDate ? new Date(orderDate).toISOString() : undefined,
       finalDate: finalOrderDate ? new Date(finalOrderDate).toISOString() : undefined,
       customerNote
     });
+
+    if (!result.ok) {
+      setFormError(result.message || "Could not create order.");
+      return;
+    }
     
     setShowAdd(false);
     setCustomerName("");
@@ -74,7 +97,8 @@ export default function OrdersPage() {
     setOrderDate("");
     setFinalOrderDate("");
     setCustomerNote("");
-    setItems([{ name: "", quantity: "", unit: "" }]);
+    setItems([{ stockId: "", quantity: "" }]);
+    setFormError("");
   };
 
   const handleNextStatus = (id: string, current: OrderStatus) => {
@@ -115,7 +139,22 @@ export default function OrdersPage() {
                <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-6">
                  <div className="space-y-1.5">
                    <label className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black px-1 tracking-wider">Customer / Client</label>
-                   <input value={customerName} onChange={e=>setCustomerName(e.target.value)} placeholder="Full Name" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-rose-500/20 transition-all font-medium" />
+                   <select
+                     value={customerName}
+                     onChange={(e) => {
+                       setCustomerName(e.target.value);
+                       setFormError("");
+                     }}
+                     className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-rose-500/20 transition-all font-medium"
+                   >
+                     <option value="">Choose customer</option>
+                     {existingCustomers.map((name) => (
+                       <option key={name.id} value={name.name}>{name.name}</option>
+                     ))}
+                   </select>
+                   <Link href="/customers" className="inline-flex text-[10px] text-rose-500 hover:text-rose-600 font-black uppercase tracking-widest">
+                     Manage Customers
+                   </Link>
                  </div>
                  <div className="space-y-1.5">
                    <label className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black px-1 tracking-wider">Target Vehicle</label>
@@ -143,7 +182,7 @@ export default function OrdersPage() {
 
                <div className="bg-white dark:bg-black/40 rounded-none border border-slate-200 dark:border-slate-800 p-5 mb-8">
                  <div className="flex justify-between items-center mb-4">
-                   <label className="text-[10px] text-slate-800 dark:text-slate-100 font-black uppercase tracking-widest">Requested Items</label>
+                   <label className="text-[10px] text-slate-800 dark:text-slate-100 font-black uppercase tracking-widest">Requested Items by Container</label>
                    <button onClick={addItemRow} className="text-rose-500 text-[10px] hover:underline transition-colors flex items-center gap-1 font-black uppercase tracking-wider">
                      + Add Item Row
                    </button>
@@ -151,10 +190,16 @@ export default function OrdersPage() {
                  <div className="space-y-3">
                     {items.map((it, idx) => (
                       <div key={idx} className="flex flex-col md:flex-row gap-3 items-start md:items-center group">
-                        <input value={it.name} onChange={e=>updateItemRow(idx, 'name', e.target.value)} placeholder="Item Name" className="w-full md:flex-1 bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
+                        <select value={it.stockId} onChange={e=>updateItemRow(idx, 'stockId', e.target.value)} className="w-full md:flex-1 bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all">
+                          <option value="">Choose container and product</option>
+                          {availableStock.map((row) => (
+                            <option key={row.id} value={row.id}>
+                              {row.containerNumber} / {row.productName} / {row.remainingQuantity} {row.unit || 'units'} left
+                            </option>
+                          ))}
+                        </select>
                         <div className="flex gap-3 w-full md:w-auto">
                           <input value={it.quantity} type="number" onChange={e=>updateItemRow(idx, 'quantity', e.target.value)} placeholder="Qty" className="flex-1 md:w-24 bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
-                          <input value={it.unit} onChange={e=>updateItemRow(idx, 'unit', e.target.value)} placeholder="Unit" className="flex-1 md:w-28 bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
                           <button onClick={() => removeItemRow(idx)} disabled={items.length === 1} className="md:opacity-0 group-hover:opacity-100 p-2.5 text-slate-400 hover:text-rose-500 transition-all border border-transparent hover:border-rose-100">
                             <Trash className="w-4 h-4" />
                           </button>
@@ -163,6 +208,12 @@ export default function OrdersPage() {
                     ))}
                  </div>
                </div>
+
+               {formError && (
+                 <div className="mb-6 border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-black uppercase tracking-wider text-rose-600">
+                   {formError}
+                 </div>
+               )}
 
                <div className="flex justify-end gap-3">
                  <button onClick={() => setShowAdd(false)} className="px-6 py-3 rounded-none text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-900 transition-all font-bold text-xs uppercase tracking-widest">Cancel</button>
@@ -209,6 +260,7 @@ export default function OrdersPage() {
                     {order.items.map((i, idx) => (
                       <div key={idx} className="px-3 py-1.5 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-slate-800 rounded-none text-xs shadow-sm group cursor-default">
                         <span className="text-slate-500 dark:text-slate-400 font-medium uppercase">{i.name}:</span> <span className="font-black text-indigo-600 dark:text-indigo-400 text-sm ml-1">{i.quantity}</span> <span className="text-[9px] text-slate-400 uppercase font-black ml-1">{i.unit || 'UNITS'}</span>
+                        {i.containerNumber && <span className="block text-[9px] text-rose-500 uppercase font-black mt-1">From {i.containerNumber}</span>}
                       </div>
                     ))}
                   </div>

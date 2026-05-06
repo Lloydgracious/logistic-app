@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Search, LayoutDashboard, Truck, ShoppingCart, Package, Moon, Sun, Layout, ScrollText, Receipt, Menu, X } from "lucide-react";
+import { Bell, Search, LayoutDashboard, Truck, ShoppingCart, Package, Moon, Sun, Layout, ScrollText, Receipt, Menu, X, Users } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -11,6 +11,7 @@ const links = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Incoming", href: "/incoming", icon: Truck },
   { name: "Orders", href: "/orders", icon: ShoppingCart },
+  { name: "Customers", href: "/customers", icon: Users },
   { name: "Inventory", href: "/inventory", icon: Package },
   { name: "Logs", href: "/logs", icon: ScrollText },
   { name: "Billing", href: "/invoices", icon: Receipt },

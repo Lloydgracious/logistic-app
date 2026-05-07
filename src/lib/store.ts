@@ -1,4 +1,9 @@
 import { create } from 'zustand';
+import {
+  canUseSupabase,
+  fetchGarageSnapshot,
+  saveGarageSnapshot,
+} from "@/lib/supabase/logistics";
 
 export type IncomingStatus = "ON_THE_WAY" | "AT_BRIDGE" | "IN_GARAGE";
 export type OrderStatus = "PENDING" | "PREPARING" | "ON_THE_WAY" | "DELIVERED";
@@ -88,6 +93,10 @@ export interface LogEntry {
 }
 
 interface GarageState {
+  isHydrated: boolean;
+  isSyncing: boolean;
+  syncError?: string;
+
   incomingList: Incoming[];
   orders: Order[];
   customers: Customer[];
@@ -106,6 +115,7 @@ interface GarageState {
 
   updateInventoryManual: (itemName: string, quantity: number, difference: number, unit?: string, containerNumber?: string, inventorySectionId?: string) => void;
   addLog: (type: LogType, message: string) => void;
+  loadRemoteData: () => Promise<void>;
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
@@ -119,6 +129,8 @@ const initialInventorySections: InventorySection[] = [
   { id: "section-engine", title: "Engine & Fluids", createdAt: FIXED_NOW },
   { id: "section-service", title: "Service Parts", createdAt: FIXED_NOW },
   { id: "section-wheels", title: "Wheels & Tires", createdAt: FIXED_NOW },
+  { id: "section-electrical", title: "Electrical & Batteries", createdAt: FIXED_NOW },
+  { id: "section-body", title: "Body & Glass", createdAt: FIXED_NOW },
   { id: DEFAULT_SECTION_ID, title: "General Stock", createdAt: FIXED_NOW },
 ];
 
@@ -173,11 +185,11 @@ const createStockRows = (
   if (alreadyStocked) return existingRows;
 
   const timestamp = new Date().toISOString();
-  const stockRows = incoming.items.map((item) => {
+  const stockRows = incoming.items.map((item, index) => {
     const section = resolveSection(item.inventorySectionId, sections);
 
     return {
-      id: generateId(),
+      id: `stock-${incoming.id}-${index + 1}`,
       containerId: incoming.id,
       containerNumber: item.containerNumber || incoming.containerNumber || "NO-CONTAINER",
       carNumber: incoming.carNumber,
@@ -194,6 +206,70 @@ const createStockRows = (
   });
 
   return [...stockRows, ...existingRows];
+};
+
+type SnapshotState = Pick<
+  GarageState,
+  "incomingList" |
+  "orders" |
+  "customers" |
+  "inventorySections" |
+  "inventory" |
+  "containerStock" |
+  "logs"
+>;
+
+type SetGarageState = (partial: Partial<GarageState> | ((state: GarageState) => Partial<GarageState>)) => void;
+
+const getSnapshot = (state: GarageState): SnapshotState => ({
+  incomingList: state.incomingList,
+  orders: state.orders,
+  customers: state.customers,
+  inventorySections: state.inventorySections,
+  inventory: state.inventory,
+  containerStock: state.containerStock,
+  logs: state.logs,
+});
+
+const mergeById = <T extends { id: string }>(baseRows: T[], incomingRows: T[]) => {
+  const rows = new Map<string, T>();
+  baseRows.forEach((row) => rows.set(row.id, row));
+  incomingRows.forEach((row) => rows.set(row.id, row));
+  return Array.from(rows.values());
+};
+
+const mergePrototypeSnapshot = (remoteSnapshot: SnapshotState, prototypeSnapshot: SnapshotState): SnapshotState => {
+  const inventorySections = mergeById(remoteSnapshot.inventorySections, prototypeSnapshot.inventorySections);
+  const containerStock = mergeById(remoteSnapshot.containerStock, prototypeSnapshot.containerStock);
+
+  return {
+    incomingList: mergeById(remoteSnapshot.incomingList, prototypeSnapshot.incomingList),
+    orders: mergeById(remoteSnapshot.orders, prototypeSnapshot.orders),
+    customers: mergeById(remoteSnapshot.customers, prototypeSnapshot.customers),
+    inventorySections,
+    containerStock,
+    inventory: recalculateInventory(containerStock, inventorySections),
+    logs: mergeById(remoteSnapshot.logs, prototypeSnapshot.logs).sort((a, b) => b.timestamp.localeCompare(a.timestamp)),
+  };
+};
+
+let syncQueue = Promise.resolve();
+
+const queueRemoteSync = (state: GarageState, set: SetGarageState) => {
+  if (!canUseSupabase()) return;
+
+  const snapshot = getSnapshot(state);
+  set({ isSyncing: true, syncError: undefined });
+
+  syncQueue = syncQueue
+    .then(() => saveGarageSnapshot(snapshot))
+    .then(() => set({ isSyncing: false }))
+    .catch((error) => {
+      set({
+        isSyncing: false,
+        syncError: error instanceof Error ? error.message : "Could not sync with Supabase.",
+      });
+    });
 };
 
 const initialIncomingList: Incoming[] = [
@@ -234,17 +310,71 @@ const initialIncomingList: Incoming[] = [
     arrivalTime: FIXED_TWO_HOURS_AGO,
     durationHours: 24,
   },
+  {
+    id: 'cnt-4',
+    containerNumber: 'CNT-004',
+    carNumber: 'YGN-204',
+    supplierName: 'BatteryHub Asia',
+    items: [
+      { name: 'Truck Batteries', quantity: 36, unit: 'Pcs', inventorySectionId: 'section-electrical', inventorySectionTitle: 'Electrical & Batteries', containerNumber: 'CNT-004' },
+      { name: 'Alternators', quantity: 18, unit: 'Pcs', inventorySectionId: 'section-electrical', inventorySectionTitle: 'Electrical & Batteries', containerNumber: 'CNT-004' },
+      { name: 'Spark Plugs', quantity: 240, unit: 'Pcs', inventorySectionId: 'section-service', inventorySectionTitle: 'Service Parts', containerNumber: 'CNT-004' },
+    ],
+    status: 'IN_GARAGE',
+    arrivalTime: "2026-04-05T10:00:00.000Z",
+    durationHours: 18,
+    note: 'Priority electrical restock',
+  },
+  {
+    id: 'cnt-5',
+    containerNumber: 'CNT-005',
+    carNumber: 'BGO-772',
+    supplierName: 'AutoGlass Myanmar',
+    items: [
+      { name: 'Windshield Glass', quantity: 22, unit: 'Pcs', inventorySectionId: 'section-body', inventorySectionTitle: 'Body & Glass', containerNumber: 'CNT-005' },
+      { name: 'Side Mirrors', quantity: 64, unit: 'Pcs', inventorySectionId: 'section-body', inventorySectionTitle: 'Body & Glass', containerNumber: 'CNT-005' },
+      { name: 'Coolant', quantity: 140, unit: 'Liters', inventorySectionId: 'section-engine', inventorySectionTitle: 'Engine & Fluids', containerNumber: 'CNT-005' },
+    ],
+    status: 'IN_GARAGE',
+    arrivalTime: "2026-04-05T11:30:00.000Z",
+    durationHours: 20,
+  },
+  {
+    id: 'cnt-6',
+    containerNumber: 'CNT-006',
+    carNumber: 'MDY-902',
+    supplierName: 'HeavyLift Parts',
+    items: [
+      { name: 'Hydraulic Fluid', quantity: 90, unit: 'Liters', inventorySectionId: 'section-engine', inventorySectionTitle: 'Engine & Fluids', containerNumber: 'CNT-006' },
+      { name: 'Fuel Filters', quantity: 75, unit: 'Pcs', inventorySectionId: 'section-service', inventorySectionTitle: 'Service Parts', containerNumber: 'CNT-006' },
+    ],
+    status: 'ON_THE_WAY',
+    arrivalTime: "2026-04-05T12:00:00.000Z",
+    durationHours: 30,
+    note: 'Expected tomorrow morning',
+  },
 ];
 
-const initialContainerStock = createStockRows(
-  initialIncomingList[1],
-  createStockRows(initialIncomingList[0], [])
-).map((row) => {
-  if (row.containerNumber === 'CNT-002' && row.productName === 'Tires') {
-    return { ...row, remainingQuantity: 116, updatedAt: FIXED_NOW };
-  }
-  return { ...row, updatedAt: FIXED_NOW };
-});
+const initialContainerStock = initialIncomingList
+  .filter((incoming) => incoming.status === 'IN_GARAGE')
+  .reduce<ContainerStock[]>((stockRows, incoming) => createStockRows(incoming, stockRows), [])
+  .map((row) => {
+    const deductions: Record<string, number> = {
+      "CNT-001:Engine Oil": 45,
+      "CNT-002:Tires": 12,
+      "CNT-004:Truck Batteries": 8,
+      "CNT-004:Spark Plugs": 40,
+      "CNT-005:Windshield Glass": 4,
+      "CNT-005:Coolant": 25,
+    };
+    const deduction = deductions[`${row.containerNumber}:${row.productName}`] || 0;
+
+    return {
+      ...row,
+      remainingQuantity: Math.max(0, row.remainingQuantity - deduction),
+      updatedAt: FIXED_NOW,
+    };
+  });
 
 const initialCustomers: Customer[] = [
   {
@@ -256,9 +386,38 @@ const initialCustomers: Customer[] = [
     createdAt: FIXED_NOW,
     updatedAt: FIXED_NOW,
   },
+  {
+    id: 'cust-2',
+    name: 'Mandalay Motors',
+    phone: '09-777-2211',
+    address: 'Mandalay highway depot',
+    note: 'Prefers morning deliveries',
+    createdAt: FIXED_NOW,
+    updatedAt: FIXED_NOW,
+  },
+  {
+    id: 'cust-3',
+    name: 'Delta Fleet Service',
+    phone: '09-441-8833',
+    address: 'Bago industrial zone',
+    note: 'Needs invoice copy with every delivery',
+    createdAt: FIXED_NOW,
+    updatedAt: FIXED_NOW,
+  },
+  {
+    id: 'cust-4',
+    name: 'Royal Workshop',
+    phone: '09-660-1188',
+    address: 'Yangon east garage lane',
+    createdAt: FIXED_NOW,
+    updatedAt: FIXED_NOW,
+  },
 ];
 
 export const useStore = create<GarageState>((set, get) => ({
+  isHydrated: false,
+  isSyncing: false,
+  syncError: undefined,
   incomingList: initialIncomingList,
   inventorySections: initialInventorySections,
   customers: initialCustomers,
@@ -267,18 +426,111 @@ export const useStore = create<GarageState>((set, get) => ({
       id: '101',
       customerName: 'John Doe',
       carNumber: 'JHN-001',
-      items: [{ name: 'Tires', quantity: 4, unit: 'Pcs', containerId: 'cnt-2', containerNumber: 'CNT-002' }],
+      items: [{ name: 'Tires', quantity: 4, unit: 'Pcs', containerId: 'stock-cnt-2-1', containerNumber: 'CNT-002' }],
       status: 'PENDING',
       orderTime: FIXED_TWO_HOURS_AGO,
       finalDate: FIXED_NOW,
       customerNote: 'Call before arrival',
+    },
+    {
+      id: '102',
+      customerName: 'Mandalay Motors',
+      carNumber: 'MDY-118',
+      items: [
+        { name: 'Engine Oil', quantity: 45, unit: 'Liters', containerId: 'stock-cnt-1-1', containerNumber: 'CNT-001' },
+        { name: 'Spark Plugs', quantity: 40, unit: 'Pcs', containerId: 'stock-cnt-4-3', containerNumber: 'CNT-004' },
+      ],
+      status: 'PREPARING',
+      orderTime: "2026-04-05T12:45:00.000Z",
+      finalDate: "2026-04-07T12:45:00.000Z",
+      customerNote: 'Load oil drums first',
+    },
+    {
+      id: '103',
+      customerName: 'Delta Fleet Service',
+      carNumber: 'BGO-330',
+      items: [
+        { name: 'Truck Batteries', quantity: 8, unit: 'Pcs', containerId: 'stock-cnt-4-1', containerNumber: 'CNT-004' },
+        { name: 'Windshield Glass', quantity: 4, unit: 'Pcs', containerId: 'stock-cnt-5-1', containerNumber: 'CNT-005' },
+      ],
+      status: 'ON_THE_WAY',
+      orderTime: "2026-04-05T09:15:00.000Z",
+      finalDate: "2026-04-06T18:00:00.000Z",
+      customerNote: 'Fragile glass shipment',
+    },
+    {
+      id: '104',
+      customerName: 'Royal Workshop',
+      carNumber: 'YGN-505',
+      items: [
+        { name: 'Coolant', quantity: 25, unit: 'Liters', containerId: 'stock-cnt-5-3', containerNumber: 'CNT-005' },
+        { name: 'Tires', quantity: 8, unit: 'Pcs', containerId: 'stock-cnt-2-1', containerNumber: 'CNT-002' },
+      ],
+      status: 'DELIVERED',
+      orderTime: "2026-04-04T16:20:00.000Z",
+      finalDate: "2026-04-05T14:00:00.000Z",
     },
   ],
   containerStock: initialContainerStock,
   inventory: recalculateInventory(initialContainerStock, initialInventorySections),
   logs: [
     { id: 'log-1', type: 'MANUAL', message: 'System initialized with container stock tracking', timestamp: FIXED_NOW },
+    { id: 'log-2', type: 'INCOMING', message: 'CNT-004 received with electrical stock and service parts', timestamp: "2026-04-05T10:20:00.000Z", operator: 'Master Admin' },
+    { id: 'log-3', type: 'INCOMING', message: 'CNT-005 received with glass, mirrors, and coolant', timestamp: "2026-04-05T11:45:00.000Z", operator: 'Master Admin' },
+    { id: 'log-4', type: 'OUTGOING', message: 'Prototype orders created for Mandalay Motors, Delta Fleet Service, and Royal Workshop', timestamp: FIXED_NOW, operator: 'Master Admin' },
   ],
+
+  loadRemoteData: async () => {
+    if (!canUseSupabase()) {
+      set({ isHydrated: true });
+      return;
+    }
+
+    set({ isSyncing: true, syncError: undefined });
+
+    try {
+      const snapshot = await fetchGarageSnapshot();
+      const hasRemoteData =
+        snapshot.inventorySections.length > 0 ||
+        snapshot.incomingList.length > 0 ||
+        snapshot.orders.length > 0 ||
+        snapshot.customers.length > 0 ||
+        snapshot.containerStock.length > 0 ||
+        snapshot.logs.length > 0;
+
+      if (!hasRemoteData) {
+        await saveGarageSnapshot(getSnapshot(get()));
+      } else {
+        if (!snapshot.logs.some((log) => log.id === "log-4")) {
+          const mergedSnapshot = mergePrototypeSnapshot(snapshot, getSnapshot(get()));
+          await saveGarageSnapshot(mergedSnapshot);
+          set({
+            ...mergedSnapshot,
+            isHydrated: true,
+            isSyncing: false,
+            syncError: undefined,
+          });
+          return;
+        }
+
+        set({
+          ...snapshot,
+          isHydrated: true,
+          isSyncing: false,
+          syncError: undefined,
+        });
+        return;
+      }
+
+      set({ isHydrated: true, isSyncing: false, syncError: undefined });
+    } catch (error) {
+      set({
+        isHydrated: true,
+        isSyncing: false,
+        syncError: error instanceof Error ? error.message : "Could not load Supabase data.",
+      });
+    }
+  },
 
   addInventorySection: (title) => {
     const trimmedTitle = title.trim();
@@ -299,11 +551,15 @@ export const useStore = create<GarageState>((set, get) => ({
         inventory: recalculateInventory(state.containerStock, [...state.inventorySections, section]),
       };
     });
+    queueRemoteSync(get(), set);
   },
 
-  addLog: (type, message) => set((state) => ({
-    logs: [{ id: generateId(), type, message, timestamp: new Date().toISOString(), operator: "Master Admin" }, ...state.logs],
-  })),
+  addLog: (type, message) => {
+    set((state) => ({
+      logs: [{ id: generateId(), type, message, timestamp: new Date().toISOString(), operator: "Master Admin" }, ...state.logs],
+    }));
+    queueRemoteSync(get(), set);
+  },
 
   addCustomer: (customer) => {
     const name = customer.name.trim();
@@ -340,6 +596,7 @@ export const useStore = create<GarageState>((set, get) => ({
     };
     set((state) => ({ incomingList: [newIncoming, ...state.incomingList] }));
     get().addLog('INCOMING', `Expected ${newIncoming.containerNumber} from ${entry.supplierName} on car ${entry.carNumber}`);
+    queueRemoteSync(get(), set);
   },
 
   updateIncomingStatus: (id, status) => {
@@ -365,6 +622,7 @@ export const useStore = create<GarageState>((set, get) => ({
 
       return { incomingList };
     });
+    queueRemoteSync(get(), set);
   },
 
   addOrder: (order) => {
@@ -431,6 +689,7 @@ export const useStore = create<GarageState>((set, get) => ({
       });
 
     get().addLog('OUTGOING', `Order created for ${order.customerName}; stock deducted from selected containers`);
+    queueRemoteSync(get(), set);
     return { ok: true };
   },
 
@@ -453,6 +712,7 @@ export const useStore = create<GarageState>((set, get) => ({
 
       return { orders: state.orders.map((o) => o.id === id ? { ...o, status } : o) };
     });
+    queueRemoteSync(get(), set);
   },
 
   updateInventoryManual: (itemName, quantity, difference, unit, containerNumber = 'MANUAL', inventorySectionId) => {
@@ -502,5 +762,6 @@ export const useStore = create<GarageState>((set, get) => ({
         inventory: recalculateInventory(containerStock, state.inventorySections),
       };
     });
+    queueRemoteSync(get(), set);
   },
 }));

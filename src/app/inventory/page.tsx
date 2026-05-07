@@ -51,11 +51,6 @@ export default function InventoryPage() {
     setNewHeaderTitle("");
   };
 
-  const openAddForSection = (sectionId: string) => {
-    setItemSectionId(sectionId);
-    setShowAdd(true);
-  };
-
   const handleAdd = () => {
     if (!itemSectionId || !itemName || !itemQty) return;
     const qty = parseInt(itemQty);
@@ -184,12 +179,6 @@ export default function InventoryPage() {
                 <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight outfit italic">{section.title}</h3>
                 <p className="text-[10px] text-slate-400 uppercase tracking-[0.25em] font-black mt-1">{section.stock.length} container rows / {section.inventory.length} products</p>
               </div>
-              <button
-                onClick={() => openAddForSection(section.id)}
-                className="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-none bg-slate-950 dark:bg-white text-white dark:text-black hover:bg-cyan-600 dark:hover:bg-cyan-500 hover:text-white transition-all shadow-lg font-black text-[10px] uppercase tracking-widest"
-              >
-                <Plus className="w-4 h-4" /> Add Product
-              </button>
             </div>
 
             {section.inventory.length > 0 && (

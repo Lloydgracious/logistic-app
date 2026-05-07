@@ -9,6 +9,25 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useStore } from "@/lib/store";
 
+const SIGNUP_EMAIL_COOLDOWN_MS = 60 * 1000;
+
+const getSignupCooldownKey = (email: string) =>
+  `garageflow-signup-email-sent-at:${email.trim().toLowerCase()}`;
+
+const getRemainingSignupCooldownSeconds = (email: string) => {
+  if (typeof window === "undefined") return 0;
+
+  const sentAt = Number(window.localStorage.getItem(getSignupCooldownKey(email)) || 0);
+  const remainingMs = SIGNUP_EMAIL_COOLDOWN_MS - (Date.now() - sentAt);
+  return Math.max(0, Math.ceil(remainingMs / 1000));
+};
+
+const markSignupEmailSent = (email: string) => {
+  if (typeof window === "undefined") return;
+
+  window.localStorage.setItem(getSignupCooldownKey(email), String(Date.now()));
+};
+
 export default function RegisterPage() {
   const router = useRouter();
   const [formError, setFormError] = useState("");
@@ -19,6 +38,20 @@ export default function RegisterPage() {
     e.preventDefault();
     setFormError("");
     setNotice("");
+
+    const formData = new FormData(e.currentTarget);
+    const firstName = String(formData.get("firstName") || "");
+    const lastName = String(formData.get("lastName") || "");
+    const company = String(formData.get("company") || "");
+    const email = String(formData.get("email") || "").trim().toLowerCase();
+    const password = String(formData.get("password") || "");
+    const cooldownSeconds = getRemainingSignupCooldownSeconds(email);
+
+    if (cooldownSeconds > 0) {
+      setNotice(`A confirmation email was just sent. Please wait ${cooldownSeconds} seconds before trying again.`);
+      return;
+    }
+
     setIsLoading(true);
 
     const supabase = createClient();
@@ -27,13 +60,6 @@ export default function RegisterPage() {
       setIsLoading(false);
       return;
     }
-
-    const formData = new FormData(e.currentTarget);
-    const firstName = String(formData.get("firstName") || "");
-    const lastName = String(formData.get("lastName") || "");
-    const company = String(formData.get("company") || "");
-    const email = String(formData.get("email") || "");
-    const password = String(formData.get("password") || "");
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -50,11 +76,19 @@ export default function RegisterPage() {
     setIsLoading(false);
 
     if (error) {
+      const isEmailRateLimit = error.message.toLowerCase().includes("email") && error.message.toLowerCase().includes("rate");
+      if (isEmailRateLimit) {
+        markSignupEmailSent(email);
+        setFormError("Supabase is cooling down confirmation emails. Please wait about a minute before trying again.");
+        return;
+      }
+
       setFormError(error.message);
       return;
     }
 
     if (!data.session) {
+      markSignupEmailSent(email);
       setNotice("Account created. Check your email to confirm your login.");
       return;
     }

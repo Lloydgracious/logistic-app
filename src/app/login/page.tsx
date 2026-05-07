@@ -4,14 +4,43 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight, Mail, Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+
+import { createClient } from "@/lib/supabase/client";
+import { useStore } from "@/lib/store";
 
 export default function LoginPage() {
   const router = useRouter();
+  const [formError, setFormError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Simulate login
+    setFormError("");
+    setIsLoading(true);
+
+    const supabase = createClient();
+    if (!supabase) {
+      setFormError("Add your Supabase URL and publishable key in .env.local first.");
+      setIsLoading(false);
+      return;
+    }
+
+    const formData = new FormData(e.currentTarget);
+    const email = String(formData.get("email") || "");
+    const password = String(formData.get("password") || "");
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    setIsLoading(false);
+
+    if (error) {
+      setFormError(error.message);
+      return;
+    }
+
+    await useStore.getState().loadRemoteData();
     router.push('/dashboard');
+    router.refresh();
   };
 
   return (
@@ -41,6 +70,7 @@ export default function LoginPage() {
                 <input 
                   type="email" 
                   id="email"
+                  name="email"
                   className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-slate-700 rounded-lg py-2.5 pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all text-slate-800 dark:text-slate-100 placeholder-slate-400 font-medium"
                   placeholder="name@company.com"
                   required
@@ -58,6 +88,7 @@ export default function LoginPage() {
                 <input 
                   type="password" 
                   id="password"
+                  name="password"
                   className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-slate-700 rounded-lg py-2.5 pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all text-slate-800 dark:text-slate-100 placeholder-slate-400 font-medium"
                   placeholder="••••••••"
                   required
@@ -65,8 +96,14 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <button type="submit" className="w-full py-3 bg-primary text-white font-bold rounded-lg shadow-md hover:shadow-lg hover:bg-primaryHover transition-all flex items-center justify-center gap-2 mt-2">
-              Sign In <ArrowRight className="w-4 h-4" />
+            {formError && (
+              <div className="border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-black uppercase tracking-wider text-rose-600">
+                {formError}
+              </div>
+            )}
+
+            <button type="submit" disabled={isLoading} className="w-full py-3 bg-primary text-white font-bold rounded-lg shadow-md hover:shadow-lg hover:bg-primaryHover transition-all flex items-center justify-center gap-2 mt-2 disabled:opacity-60">
+              {isLoading ? "Signing In..." : "Sign In"} <ArrowRight className="w-4 h-4" />
             </button>
           </form>
 

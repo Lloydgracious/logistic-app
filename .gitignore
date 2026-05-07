@@ -25,6 +25,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 next-dev*.log
+dev-server*.log
+start-server*.log
 
 # local tool cache
 .fallow/

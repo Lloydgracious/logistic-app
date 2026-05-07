@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { createClient } from "@/lib/supabase/client";
 
 const links = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -41,6 +42,16 @@ export function Navbar() {
       document.documentElement.classList.add('dark');
       setIsDarkMode(true);
     }
+  };
+
+  const handleLogout = async () => {
+    setIsProfileOpen(false);
+    const supabase = createClient();
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
+    router.push('/');
+    router.refresh();
   };
 
   if (['/', '/login', '/register'].includes(pathname)) {
@@ -142,7 +153,7 @@ export function Navbar() {
                      <Layout className="w-4 h-4" />
                      Profile Settings
                   </Link>
-                  <button onClick={() => { setIsProfileOpen(false); router.push('/'); }} className="w-full text-left px-4 py-3 text-[11px] font-black uppercase text-rose-600 hover:bg-rose-600 hover:text-white transition-all flex items-center gap-3 border-t border-slate-50 dark:border-slate-800">
+                  <button onClick={handleLogout} className="w-full text-left px-4 py-3 text-[11px] font-black uppercase text-rose-600 hover:bg-rose-600 hover:text-white transition-all flex items-center gap-3 border-t border-slate-50 dark:border-slate-800">
                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
                      Secure Log Out
                   </button>

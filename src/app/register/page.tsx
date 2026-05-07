@@ -4,14 +4,64 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight, Mail, Lock, User, Building } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+
+import { createClient } from "@/lib/supabase/client";
+import { useStore } from "@/lib/store";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const [formError, setFormError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Simulate registration
+    setFormError("");
+    setNotice("");
+    setIsLoading(true);
+
+    const supabase = createClient();
+    if (!supabase) {
+      setFormError("Add your Supabase URL and publishable key in .env.local first.");
+      setIsLoading(false);
+      return;
+    }
+
+    const formData = new FormData(e.currentTarget);
+    const firstName = String(formData.get("firstName") || "");
+    const lastName = String(formData.get("lastName") || "");
+    const company = String(formData.get("company") || "");
+    const email = String(formData.get("email") || "");
+    const password = String(formData.get("password") || "");
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          first_name: firstName,
+          last_name: lastName,
+          company,
+        },
+      },
+    });
+
+    setIsLoading(false);
+
+    if (error) {
+      setFormError(error.message);
+      return;
+    }
+
+    if (!data.session) {
+      setNotice("Account created. Check your email to confirm your login.");
+      return;
+    }
+
+    await useStore.getState().loadRemoteData();
     router.push('/dashboard');
+    router.refresh();
   };
 
   return (
@@ -39,6 +89,7 @@ export default function RegisterPage() {
                   <input 
                     type="text" 
                     id="firstName"
+                    name="firstName"
                     className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-slate-700 rounded-lg py-2.5 pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all text-slate-800 dark:text-slate-100 placeholder-slate-400 font-medium"
                     placeholder="John"
                     required
@@ -52,6 +103,7 @@ export default function RegisterPage() {
                   <input 
                     type="text" 
                     id="lastName"
+                    name="lastName"
                     className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-slate-700 rounded-lg py-2.5 pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all text-slate-800 dark:text-slate-100 placeholder-slate-400 font-medium"
                     placeholder="Doe"
                     required
@@ -67,6 +119,7 @@ export default function RegisterPage() {
                 <input 
                   type="text" 
                   id="company"
+                  name="company"
                   className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-slate-700 rounded-lg py-2.5 pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all text-slate-800 dark:text-slate-100 placeholder-slate-400 font-medium"
                   placeholder="Logistics Inc."
                   required
@@ -81,6 +134,7 @@ export default function RegisterPage() {
                 <input 
                   type="email" 
                   id="email"
+                  name="email"
                   className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-slate-700 rounded-lg py-2.5 pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all text-slate-800 dark:text-slate-100 placeholder-slate-400 font-medium"
                   placeholder="name@company.com"
                   required
@@ -95,6 +149,7 @@ export default function RegisterPage() {
                 <input 
                   type="password" 
                   id="password"
+                  name="password"
                   className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-slate-700 rounded-lg py-2.5 pl-10 pr-4 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all text-slate-800 dark:text-slate-100 placeholder-slate-400 font-medium"
                   placeholder="••••••••"
                   required
@@ -102,8 +157,20 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <button type="submit" className="w-full py-3 bg-primary text-white font-bold rounded-lg shadow-md hover:shadow-lg hover:bg-primaryHover transition-all flex items-center justify-center gap-2 mt-4">
-              Create Account <ArrowRight className="w-4 h-4" />
+            {formError && (
+              <div className="border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-black uppercase tracking-wider text-rose-600">
+                {formError}
+              </div>
+            )}
+
+            {notice && (
+              <div className="border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-black uppercase tracking-wider text-emerald-600">
+                {notice}
+              </div>
+            )}
+
+            <button type="submit" disabled={isLoading} className="w-full py-3 bg-primary text-white font-bold rounded-lg shadow-md hover:shadow-lg hover:bg-primaryHover transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-60">
+              {isLoading ? "Creating..." : "Create Account"} <ArrowRight className="w-4 h-4" />
             </button>
           </form>
 

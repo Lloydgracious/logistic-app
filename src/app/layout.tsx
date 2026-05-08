@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
-import { Sidebar } from "@/components/Sidebar";
 import { StoreHydrator } from "@/components/StoreHydrator";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -24,8 +23,7 @@ export default function RootLayout({
         <main className="flex-1 flex flex-col h-screen overflow-hidden relative z-10 bg-background">
           <StoreHydrator />
           <Navbar />
-          <Sidebar />
-          <div className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 lg:pl-32 pt-24 mt-16 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 pt-24 mt-16 custom-scrollbar">
             {children}
           </div>
         </main>

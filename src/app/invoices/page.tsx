@@ -56,6 +56,47 @@ export default function InvoicePage() {
     }));
   };
 
+  const handleExportPdf = () => {
+    const invoiceElement = document.getElementById("invoice-export-document");
+    if (!selectedOrder || !invoiceElement) return;
+
+    const printWindow = window.open("", "_blank", "width=900,height=1200");
+    if (!printWindow) {
+      window.print();
+      return;
+    }
+
+    const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map((element) => element.outerHTML)
+      .join("\n");
+
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <title>${resolvedManifestId}</title>
+          ${styles}
+          <style>
+            @page { size: A4; margin: 14mm; }
+            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            body { margin: 0; background: white; color: #0f172a; font-family: Arial, sans-serif; }
+            .invoice-document { border: 0 !important; box-shadow: none !important; min-height: auto !important; }
+          </style>
+        </head>
+        <body>
+          ${invoiceElement.outerHTML}
+          <script>
+            window.addEventListener("load", function () {
+              window.focus();
+              window.print();
+            });
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-20 animate-in fade-in slide-in-from-bottom-8 duration-500">
       
@@ -77,6 +118,7 @@ export default function InvoicePage() {
              <Printer className="w-4 h-4" /> Print Document
            </button>
            <button 
+             onClick={handleExportPdf}
              disabled={!selectedOrder}
              className="flex items-center gap-2 bg-white dark:bg-zinc-900 text-slate-900 dark:text-white border-2 border-slate-900 dark:border-white px-5 py-3 rounded-none font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 disabled:opacity-30 transition-all shadow-lg"
            >
@@ -194,6 +236,7 @@ export default function InvoicePage() {
                    initial={{ opacity: 0, y: 20 }}
                    animate={{ opacity: 1, y: 0 }}
                    exit={{ opacity: 0, y: -20 }}
+                   id="invoice-export-document"
                    className="invoice-document bg-white dark:bg-zinc-950 p-10 md:p-16 border border-slate-200 dark:border-zinc-800 shadow-2xl relative overflow-hidden"
                  >
                     {/* Invoice Decoration */}

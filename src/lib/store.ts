@@ -120,25 +120,15 @@ interface GarageState {
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
-const FIXED_NOW = "2026-04-05T15:00:00.000Z";
-const FIXED_HOUR_AGO = "2026-04-05T14:00:00.000Z";
-const FIXED_TWO_HOURS_AGO = "2026-04-05T13:00:00.000Z";
 const DEFAULT_SECTION_ID = "section-general";
 
-const initialInventorySections: InventorySection[] = [
-  { id: "section-engine", title: "Engine & Fluids", createdAt: FIXED_NOW },
-  { id: "section-service", title: "Service Parts", createdAt: FIXED_NOW },
-  { id: "section-wheels", title: "Wheels & Tires", createdAt: FIXED_NOW },
-  { id: "section-electrical", title: "Electrical & Batteries", createdAt: FIXED_NOW },
-  { id: "section-body", title: "Body & Glass", createdAt: FIXED_NOW },
-  { id: DEFAULT_SECTION_ID, title: "General Stock", createdAt: FIXED_NOW },
-];
+const initialInventorySections: InventorySection[] = [];
 
 const resolveSection = (sectionId: string | undefined, sections: InventorySection[]) => {
   return sections.find((section) => section.id === sectionId) || sections[0] || {
     id: DEFAULT_SECTION_ID,
     title: "General Stock",
-    createdAt: FIXED_NOW,
+    createdAt: new Date().toISOString(),
   };
 };
 
@@ -231,26 +221,36 @@ const getSnapshot = (state: GarageState): SnapshotState => ({
   logs: state.logs,
 });
 
-const mergeById = <T extends { id: string }>(baseRows: T[], incomingRows: T[]) => {
-  const rows = new Map<string, T>();
-  baseRows.forEach((row) => rows.set(row.id, row));
-  incomingRows.forEach((row) => rows.set(row.id, row));
-  return Array.from(rows.values());
+const prototypeIds = {
+  incoming: new Set(["cnt-1", "cnt-2", "cnt-3", "cnt-4", "cnt-5", "cnt-6"]),
+  orders: new Set(["101", "102", "103", "104"]),
+  customers: new Set(["cust-1", "cust-2", "cust-3", "cust-4"]),
+  sections: new Set(["section-engine", "section-service", "section-wheels", "section-electrical", "section-body", DEFAULT_SECTION_ID]),
+  logs: new Set(["log-1", "log-2", "log-3", "log-4"]),
 };
 
-const mergePrototypeSnapshot = (remoteSnapshot: SnapshotState, prototypeSnapshot: SnapshotState): SnapshotState => {
-  const inventorySections = mergeById(remoteSnapshot.inventorySections, prototypeSnapshot.inventorySections);
-  const containerStock = mergeById(remoteSnapshot.containerStock, prototypeSnapshot.containerStock);
-
-  return {
-    incomingList: mergeById(remoteSnapshot.incomingList, prototypeSnapshot.incomingList),
-    orders: mergeById(remoteSnapshot.orders, prototypeSnapshot.orders),
-    customers: mergeById(remoteSnapshot.customers, prototypeSnapshot.customers),
+const removePrototypeData = (snapshot: SnapshotState) => {
+  const inventorySections = snapshot.inventorySections.filter((section) => !prototypeIds.sections.has(section.id));
+  const containerStock = snapshot.containerStock.filter((row) => !row.id.startsWith("stock-cnt-"));
+  const cleanedSnapshot: SnapshotState = {
+    incomingList: snapshot.incomingList.filter((incoming) => !prototypeIds.incoming.has(incoming.id)),
+    orders: snapshot.orders.filter((order) => !prototypeIds.orders.has(order.id)),
+    customers: snapshot.customers.filter((customer) => !prototypeIds.customers.has(customer.id)),
     inventorySections,
     containerStock,
     inventory: recalculateInventory(containerStock, inventorySections),
-    logs: mergeById(remoteSnapshot.logs, prototypeSnapshot.logs).sort((a, b) => b.timestamp.localeCompare(a.timestamp)),
+    logs: snapshot.logs.filter((log) => !prototypeIds.logs.has(log.id)),
   };
+
+  const removedCount =
+    snapshot.incomingList.length - cleanedSnapshot.incomingList.length +
+    snapshot.orders.length - cleanedSnapshot.orders.length +
+    snapshot.customers.length - cleanedSnapshot.customers.length +
+    snapshot.inventorySections.length - cleanedSnapshot.inventorySections.length +
+    snapshot.containerStock.length - cleanedSnapshot.containerStock.length +
+    snapshot.logs.length - cleanedSnapshot.logs.length;
+
+  return { snapshot: cleanedSnapshot, removedCount };
 };
 
 let syncQueue = Promise.resolve();
@@ -272,147 +272,9 @@ const queueRemoteSync = (state: GarageState, set: SetGarageState) => {
     });
 };
 
-const initialIncomingList: Incoming[] = [
-  {
-    id: 'cnt-1',
-    containerNumber: 'CNT-001',
-    carNumber: 'ABC-123',
-    supplierName: 'TechParts Inc',
-    items: [
-      { name: 'Engine Oil', quantity: 200, unit: 'Liters', inventorySectionId: 'section-engine', inventorySectionTitle: 'Engine & Fluids', containerNumber: 'CNT-001' },
-      { name: 'Brake Pads', quantity: 45, unit: 'Sets', inventorySectionId: 'section-service', inventorySectionTitle: 'Service Parts', containerNumber: 'CNT-001' },
-    ],
-    status: 'IN_GARAGE',
-    arrivalTime: FIXED_NOW,
-    durationHours: 48,
-    note: 'Container already received in garage',
-  },
-  {
-    id: 'cnt-2',
-    containerNumber: 'CNT-002',
-    carNumber: 'XYZ-987',
-    supplierName: 'TireCorp',
-    items: [{ name: 'Tires', quantity: 120, unit: 'Pcs', inventorySectionId: 'section-wheels', inventorySectionTitle: 'Wheels & Tires', containerNumber: 'CNT-002' }],
-    status: 'IN_GARAGE',
-    arrivalTime: FIXED_HOUR_AGO,
-    durationHours: 12,
-  },
-  {
-    id: 'cnt-3',
-    containerNumber: 'CNT-003',
-    carNumber: 'MDY-448',
-    supplierName: 'Future Freight',
-    items: [
-      { name: 'Engine Oil', quantity: 80, unit: 'Liters', inventorySectionId: 'section-engine', inventorySectionTitle: 'Engine & Fluids', containerNumber: 'CNT-003' },
-      { name: 'Air Filter', quantity: 60, unit: 'Pcs', inventorySectionId: 'section-service', inventorySectionTitle: 'Service Parts', containerNumber: 'CNT-003' },
-    ],
-    status: 'AT_BRIDGE',
-    arrivalTime: FIXED_TWO_HOURS_AGO,
-    durationHours: 24,
-  },
-  {
-    id: 'cnt-4',
-    containerNumber: 'CNT-004',
-    carNumber: 'YGN-204',
-    supplierName: 'BatteryHub Asia',
-    items: [
-      { name: 'Truck Batteries', quantity: 36, unit: 'Pcs', inventorySectionId: 'section-electrical', inventorySectionTitle: 'Electrical & Batteries', containerNumber: 'CNT-004' },
-      { name: 'Alternators', quantity: 18, unit: 'Pcs', inventorySectionId: 'section-electrical', inventorySectionTitle: 'Electrical & Batteries', containerNumber: 'CNT-004' },
-      { name: 'Spark Plugs', quantity: 240, unit: 'Pcs', inventorySectionId: 'section-service', inventorySectionTitle: 'Service Parts', containerNumber: 'CNT-004' },
-    ],
-    status: 'IN_GARAGE',
-    arrivalTime: "2026-04-05T10:00:00.000Z",
-    durationHours: 18,
-    note: 'Priority electrical restock',
-  },
-  {
-    id: 'cnt-5',
-    containerNumber: 'CNT-005',
-    carNumber: 'BGO-772',
-    supplierName: 'AutoGlass Myanmar',
-    items: [
-      { name: 'Windshield Glass', quantity: 22, unit: 'Pcs', inventorySectionId: 'section-body', inventorySectionTitle: 'Body & Glass', containerNumber: 'CNT-005' },
-      { name: 'Side Mirrors', quantity: 64, unit: 'Pcs', inventorySectionId: 'section-body', inventorySectionTitle: 'Body & Glass', containerNumber: 'CNT-005' },
-      { name: 'Coolant', quantity: 140, unit: 'Liters', inventorySectionId: 'section-engine', inventorySectionTitle: 'Engine & Fluids', containerNumber: 'CNT-005' },
-    ],
-    status: 'IN_GARAGE',
-    arrivalTime: "2026-04-05T11:30:00.000Z",
-    durationHours: 20,
-  },
-  {
-    id: 'cnt-6',
-    containerNumber: 'CNT-006',
-    carNumber: 'MDY-902',
-    supplierName: 'HeavyLift Parts',
-    items: [
-      { name: 'Hydraulic Fluid', quantity: 90, unit: 'Liters', inventorySectionId: 'section-engine', inventorySectionTitle: 'Engine & Fluids', containerNumber: 'CNT-006' },
-      { name: 'Fuel Filters', quantity: 75, unit: 'Pcs', inventorySectionId: 'section-service', inventorySectionTitle: 'Service Parts', containerNumber: 'CNT-006' },
-    ],
-    status: 'ON_THE_WAY',
-    arrivalTime: "2026-04-05T12:00:00.000Z",
-    durationHours: 30,
-    note: 'Expected tomorrow morning',
-  },
-];
-
-const initialContainerStock = initialIncomingList
-  .filter((incoming) => incoming.status === 'IN_GARAGE')
-  .reduce<ContainerStock[]>((stockRows, incoming) => createStockRows(incoming, stockRows), [])
-  .map((row) => {
-    const deductions: Record<string, number> = {
-      "CNT-001:Engine Oil": 45,
-      "CNT-002:Tires": 12,
-      "CNT-004:Truck Batteries": 8,
-      "CNT-004:Spark Plugs": 40,
-      "CNT-005:Windshield Glass": 4,
-      "CNT-005:Coolant": 25,
-    };
-    const deduction = deductions[`${row.containerNumber}:${row.productName}`] || 0;
-
-    return {
-      ...row,
-      remainingQuantity: Math.max(0, row.remainingQuantity - deduction),
-      updatedAt: FIXED_NOW,
-    };
-  });
-
-const initialCustomers: Customer[] = [
-  {
-    id: 'cust-1',
-    name: 'John Doe',
-    phone: '09-555-0101',
-    address: 'Yangon service route',
-    note: 'Call before arrival',
-    createdAt: FIXED_NOW,
-    updatedAt: FIXED_NOW,
-  },
-  {
-    id: 'cust-2',
-    name: 'Mandalay Motors',
-    phone: '09-777-2211',
-    address: 'Mandalay highway depot',
-    note: 'Prefers morning deliveries',
-    createdAt: FIXED_NOW,
-    updatedAt: FIXED_NOW,
-  },
-  {
-    id: 'cust-3',
-    name: 'Delta Fleet Service',
-    phone: '09-441-8833',
-    address: 'Bago industrial zone',
-    note: 'Needs invoice copy with every delivery',
-    createdAt: FIXED_NOW,
-    updatedAt: FIXED_NOW,
-  },
-  {
-    id: 'cust-4',
-    name: 'Royal Workshop',
-    phone: '09-660-1188',
-    address: 'Yangon east garage lane',
-    createdAt: FIXED_NOW,
-    updatedAt: FIXED_NOW,
-  },
-];
+const initialIncomingList: Incoming[] = [];
+const initialContainerStock: ContainerStock[] = [];
+const initialCustomers: Customer[] = [];
 
 export const useStore = create<GarageState>((set, get) => ({
   isHydrated: false,
@@ -421,64 +283,10 @@ export const useStore = create<GarageState>((set, get) => ({
   incomingList: initialIncomingList,
   inventorySections: initialInventorySections,
   customers: initialCustomers,
-  orders: [
-    {
-      id: '101',
-      customerName: 'John Doe',
-      carNumber: 'JHN-001',
-      items: [{ name: 'Tires', quantity: 4, unit: 'Pcs', containerId: 'stock-cnt-2-1', containerNumber: 'CNT-002' }],
-      status: 'PENDING',
-      orderTime: FIXED_TWO_HOURS_AGO,
-      finalDate: FIXED_NOW,
-      customerNote: 'Call before arrival',
-    },
-    {
-      id: '102',
-      customerName: 'Mandalay Motors',
-      carNumber: 'MDY-118',
-      items: [
-        { name: 'Engine Oil', quantity: 45, unit: 'Liters', containerId: 'stock-cnt-1-1', containerNumber: 'CNT-001' },
-        { name: 'Spark Plugs', quantity: 40, unit: 'Pcs', containerId: 'stock-cnt-4-3', containerNumber: 'CNT-004' },
-      ],
-      status: 'PREPARING',
-      orderTime: "2026-04-05T12:45:00.000Z",
-      finalDate: "2026-04-07T12:45:00.000Z",
-      customerNote: 'Load oil drums first',
-    },
-    {
-      id: '103',
-      customerName: 'Delta Fleet Service',
-      carNumber: 'BGO-330',
-      items: [
-        { name: 'Truck Batteries', quantity: 8, unit: 'Pcs', containerId: 'stock-cnt-4-1', containerNumber: 'CNT-004' },
-        { name: 'Windshield Glass', quantity: 4, unit: 'Pcs', containerId: 'stock-cnt-5-1', containerNumber: 'CNT-005' },
-      ],
-      status: 'ON_THE_WAY',
-      orderTime: "2026-04-05T09:15:00.000Z",
-      finalDate: "2026-04-06T18:00:00.000Z",
-      customerNote: 'Fragile glass shipment',
-    },
-    {
-      id: '104',
-      customerName: 'Royal Workshop',
-      carNumber: 'YGN-505',
-      items: [
-        { name: 'Coolant', quantity: 25, unit: 'Liters', containerId: 'stock-cnt-5-3', containerNumber: 'CNT-005' },
-        { name: 'Tires', quantity: 8, unit: 'Pcs', containerId: 'stock-cnt-2-1', containerNumber: 'CNT-002' },
-      ],
-      status: 'DELIVERED',
-      orderTime: "2026-04-04T16:20:00.000Z",
-      finalDate: "2026-04-05T14:00:00.000Z",
-    },
-  ],
+  orders: [],
   containerStock: initialContainerStock,
   inventory: recalculateInventory(initialContainerStock, initialInventorySections),
-  logs: [
-    { id: 'log-1', type: 'MANUAL', message: 'System initialized with container stock tracking', timestamp: FIXED_NOW },
-    { id: 'log-2', type: 'INCOMING', message: 'CNT-004 received with electrical stock and service parts', timestamp: "2026-04-05T10:20:00.000Z", operator: 'Master Admin' },
-    { id: 'log-3', type: 'INCOMING', message: 'CNT-005 received with glass, mirrors, and coolant', timestamp: "2026-04-05T11:45:00.000Z", operator: 'Master Admin' },
-    { id: 'log-4', type: 'OUTGOING', message: 'Prototype orders created for Mandalay Motors, Delta Fleet Service, and Royal Workshop', timestamp: FIXED_NOW, operator: 'Master Admin' },
-  ],
+  logs: [],
 
   loadRemoteData: async () => {
     if (!canUseSupabase()) {
@@ -498,23 +306,14 @@ export const useStore = create<GarageState>((set, get) => ({
         snapshot.containerStock.length > 0 ||
         snapshot.logs.length > 0;
 
-      if (!hasRemoteData) {
-        await saveGarageSnapshot(getSnapshot(get()));
-      } else {
-        if (!snapshot.logs.some((log) => log.id === "log-4")) {
-          const mergedSnapshot = mergePrototypeSnapshot(snapshot, getSnapshot(get()));
-          await saveGarageSnapshot(mergedSnapshot);
-          set({
-            ...mergedSnapshot,
-            isHydrated: true,
-            isSyncing: false,
-            syncError: undefined,
-          });
-          return;
+      if (hasRemoteData) {
+        const cleanedRemoteData = removePrototypeData(snapshot);
+        if (cleanedRemoteData.removedCount > 0) {
+          await saveGarageSnapshot(cleanedRemoteData.snapshot);
         }
 
         set({
-          ...snapshot,
+          ...cleanedRemoteData.snapshot,
           isHydrated: true,
           isSyncing: false,
           syncError: undefined,

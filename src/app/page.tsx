@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 
@@ -20,15 +21,12 @@ export default function WelcomePage() {
           className="flex flex-col items-center text-center"
         >
           {/* Logo Brand */}
-          <div className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white outfit tracking-tighter flex items-center gap-4 mb-12">
-            <div className="w-10 h-10 md:w-12 md:h-12 rounded-none bg-slate-950 dark:bg-white flex items-center justify-center transform rotate-45 group transition-all shadow-xl">
-              <span className="text-white dark:text-black text-xl md:text-2xl font-black -rotate-45">G</span>
-            </div>
-            GARAGE<span className="text-rose-600 italic">FLOW</span>
+          <div className="bg-white border border-slate-200 px-4 py-3 shadow-xl mb-12">
+            <Image src="/kay-thi-logo.png" alt="Kay Thi (Myawady)" width={455} height={205} className="h-24 md:h-28 w-auto max-w-full object-contain" priority />
           </div>
 
           <h1 className="text-5xl sm:text-7xl md:text-8xl font-black text-slate-900 dark:text-white leading-[0.85] outfit tracking-tighter mb-8 uppercase">
-             Fleet <br/> 
+             Transport <br/> 
             <span className="text-rose-600 italic">Tracking.</span>
           </h1>
 
@@ -61,8 +59,8 @@ export default function WelcomePage() {
         </motion.div>
       </div>
 
-      <div className="absolute top-12 left-12 text-[10px] font-black uppercase tracking-[0.5em] text-slate-200 dark:text-zinc-900 hidden md:block">GF_System: Active</div>
-      <div className="absolute bottom-12 right-12 text-[10px] font-black uppercase tracking-[0.5em] text-slate-200 dark:text-zinc-900 hidden md:block">GarageFlow // 2026</div>
+      <div className="absolute top-12 left-12 text-[10px] font-black uppercase tracking-[0.5em] text-slate-200 dark:text-zinc-900 hidden md:block">KT_System: Active</div>
+      <div className="absolute bottom-12 right-12 text-[10px] font-black uppercase tracking-[0.5em] text-slate-200 dark:text-zinc-900 hidden md:block">Kay Thi // 2026</div>
     </div>
   );
 }

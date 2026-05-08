@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, LogIn, ShoppingCart, Package, ScrollText, Users } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -33,8 +34,8 @@ export function Sidebar() {
     >
       {/* App Logo/Icon */}
       <div className="relative flex items-center justify-center">
-        <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-primary to-blue-600 flex items-center justify-center glow-hover shadow-[0_0_20px_rgba(37,99,235,0.3)]">
-          <span className="font-black text-white text-lg">G</span>
+        <div className="w-10 h-10 rounded-2xl bg-white border border-slate-200 flex items-center justify-center overflow-hidden shadow-[0_0_20px_rgba(37,99,235,0.16)]">
+          <Image src="/kay-thi-logo.png" alt="Kay Thi" width={455} height={205} className="h-9 w-auto max-w-none object-contain" />
         </div>
         <AnimatePresence>
           {isHovered && (
@@ -44,7 +45,7 @@ export function Sidebar() {
               exit={{ opacity: 0, x: -10 }}
               className="absolute left-14 whitespace-nowrap font-bold text-xl tracking-tighter text-slate-800 dark:text-white"
             >
-              GarageFlow
+              Kay Thi
             </motion.span>
           )}
         </AnimatePresence>

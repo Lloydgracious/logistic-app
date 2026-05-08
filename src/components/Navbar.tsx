@@ -2,6 +2,7 @@
 
 import { Bell, Search, LayoutDashboard, Truck, ShoppingCart, Package, Moon, Sun, ScrollText, Receipt, Menu, X, Users, LogOut } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
+import Image from "next/image";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -69,11 +70,11 @@ export function Navbar() {
             {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
 
-          <Link href="/dashboard" className="flex items-center gap-2 md:gap-3">
-            <div className="w-8 h-8 md:w-9 md:h-9 rounded-none bg-gradient-to-br from-indigo-600 via-rose-500 to-cyan-500 flex items-center justify-center shadow-lg transform rotate-45">
-               <span className="font-black text-white text-base md:text-xl -rotate-45">G</span>
-            </div>
-            <span className="font-black text-lg md:text-xl tracking-tighter text-slate-900 dark:text-white outfit uppercase">Garage<span className="text-rose-500 italic">Flow</span></span>
+          <Link href="/dashboard" className="flex items-center gap-3">
+            <span className="bg-white border border-slate-200 px-2 py-1 shadow-sm">
+              <Image src="/kay-thi-logo.png" alt="Kay Thi (Myawady)" width={455} height={205} className="h-9 w-auto max-w-[190px] object-contain" priority />
+            </span>
+            <span className="hidden xl:block font-black text-[10px] tracking-[0.2em] text-slate-500 dark:text-zinc-400 uppercase">Transport OS</span>
           </Link>
 
           <nav className="hidden lg:flex items-center gap-1">
@@ -158,8 +159,9 @@ export function Navbar() {
             >
               <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <Link href="/dashboard" className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-none bg-slate-900 flex items-center justify-center text-white font-black">G</div>
-                  <span className="font-black text-lg tracking-tighter uppercase italic">Garage<span className="text-rose-500">Flow</span></span>
+                  <span className="bg-white border border-slate-200 px-2 py-1 shadow-sm">
+                    <Image src="/kay-thi-logo.png" alt="Kay Thi (Myawady)" width={455} height={205} className="h-9 w-auto max-w-[185px] object-contain" priority />
+                  </span>
                 </Link>
                 <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-slate-400 hover:text-rose-500">
                   <X className="w-5 h-5" />

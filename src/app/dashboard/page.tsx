@@ -74,7 +74,7 @@ export default function Dashboard() {
   const metadata = user?.user_metadata || {};
   const fullName = [metadata.first_name, metadata.last_name].filter(Boolean).join(" ").trim();
   const displayName = fullName || user?.email?.split("@")[0] || "Guest Operator";
-  const companyName = metadata.company || "GarageFlow";
+  const companyName = metadata.company || "Kay Thi Transport";
   const userEmail = user?.email || "Sign in to sync account";
   const initials = displayName
     .split(/\s+/)
@@ -97,7 +97,7 @@ export default function Dashboard() {
         </div>
         <div className="saas-card px-5 py-3 flex items-center gap-3 border-l-4 border-l-rose-500 rounded-none shadow-xl max-w-full">
           <div className="w-9 h-9 rounded-none border border-white dark:border-zinc-800 bg-slate-900 dark:bg-white text-white dark:text-black flex items-center justify-center text-[10px] font-black shadow-lg shrink-0">
-            {initials || "GF"}
+            {initials || "KT"}
           </div>
           <div className="min-w-0">
             <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest truncate">1 Active Node</p>

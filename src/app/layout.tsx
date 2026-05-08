@@ -8,8 +8,8 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
 
 export const metadata: Metadata = {
-  title: "GarageFlow - Logistics & Inventory",
-  description: "Smart garage logistics, vehicle tracking, and inventory management system.",
+  title: "Kay Thi Transport - Logistics & Inventory",
+  description: "Export, import, transportation, order tracking, and inventory management system.",
 };
 
 export default function RootLayout({

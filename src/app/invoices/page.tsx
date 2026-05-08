@@ -1,9 +1,17 @@
 "use client";
 
 import { useStore } from "@/lib/store";
+import Image from "next/image";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Receipt, FileText, Printer, Download, ArrowRight, User, Calendar, BadgeDollarSign } from "lucide-react";
+
+const companyDetails = [
+  "No.(C/21), Qtr 1, Near Chit Kyi Yay Bridge, Ba Yint Naung Road, Myawaddy.",
+  "No.(41-A, Naung Yoe Street, Ba Yint Naung, MaYanGone Tsp, Yangon.",
+  "095198258, 095670988, 09783299546",
+  "kay.t.win67@gmail.com",
+];
 
 export default function InvoicePage() {
   const { orders } = useStore();
@@ -75,6 +83,7 @@ export default function InvoicePage() {
       <html>
         <head>
           <title>${resolvedManifestId}</title>
+          <base href="${window.location.origin}" />
           ${styles}
           <style>
             @page { size: A4; margin: 14mm; }
@@ -104,9 +113,9 @@ export default function InvoicePage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
           <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tighter outfit uppercase italic">
-            Billing <span className="text-cyan-500">Forge</span>
+            Billing <span className="text-cyan-500">Office</span>
           </h2>
-          <p className="text-[10px] font-black text-slate-400 dark:text-zinc-600 uppercase tracking-[0.2em] mt-2">Financial manifest generation and ledgering.</p>
+          <p className="text-[10px] font-black text-slate-400 dark:text-zinc-600 uppercase tracking-[0.2em] mt-2">Kay Thi invoice generation and transport billing.</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -223,7 +232,7 @@ export default function InvoicePage() {
                  <FileText className="w-5 h-5" />
                  <p className="text-[10px] font-black uppercase tracking-widest">Legal Notice</p>
               </div>
-              <p className="text-[10px] leading-relaxed font-bold">This document Forge is a secure terminal for generating billable manifests. All generated invoices are authenticated against the central Audit Engine.</p>
+              <p className="text-[10px] leading-relaxed font-bold">Invoices are generated for Kay Thi (Myawady) Trading Company Limited export, import, and transportation records.</p>
            </div>
         </div>
 
@@ -243,16 +252,23 @@ export default function InvoicePage() {
                     <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 -mr-32 -mt-32 rotate-45 pointer-events-none" />
                     
                     <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-16 border-b-4 border-slate-950 dark:border-white pb-10">
-                       <div>
-                          <div className="w-14 h-14 bg-slate-950 dark:bg-white flex items-center justify-center text-white dark:text-black mb-6">
-                            <Receipt className="w-7 h-7" />
+                       <div className="max-w-xl">
+                          <div className="bg-white border border-slate-200 p-3 inline-flex mb-6">
+                            <Image src="/kay-thi-logo.png" alt="Kay Thi (Myawady) Trading Company Limited" width={455} height={205} className="h-28 w-auto object-contain" priority />
                           </div>
-                          <h1 className="text-4xl font-black outfit tracking-tighter text-slate-950 dark:text-white uppercase leading-none">GARAGE<br/><span className="text-cyan-500 italic">FLOW</span> LOGISTICS</h1>
-                          <p className="text-xs font-black uppercase tracking-widest text-slate-400 mt-5 leading-relaxed">
-                            Global Supply Chain Hub<br/>
-                            Terminal 4, Sector 7G<br/>
-                            Industrial-001
+                          <h1 className="text-3xl md:text-4xl font-black outfit tracking-tighter text-slate-950 dark:text-white uppercase leading-none">
+                            Kay Thi <span className="text-cyan-500 italic">(Myawady)</span>
+                          </h1>
+                          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 mt-3">
+                            Export / Import & Transportation
                           </p>
+                          <div className="mt-5 space-y-1">
+                            {companyDetails.map((detail) => (
+                              <p key={detail} className="text-[10px] md:text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-zinc-400 leading-relaxed">
+                                {detail}
+                              </p>
+                            ))}
+                          </div>
                        </div>
                        <div className="text-right">
                           <h2 className="text-6xl font-black outfit tracking-tighter text-slate-200 dark:text-zinc-800 uppercase italic">Invoice</h2>

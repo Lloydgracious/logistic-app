@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { ArrowRight, Mail, Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -55,11 +56,11 @@ export default function LoginPage() {
       >
         <div className="saas-card p-8 shadow-lg">
           <div className="text-center mb-8">
-            <div className="w-12 h-12 rounded-xl bg-primary mx-auto flex items-center justify-center shadow-md mb-4">
-               <span className="font-black text-white text-3xl">G</span>
+            <div className="mx-auto mb-5 inline-flex bg-white border border-slate-200 px-3 py-2 shadow-sm">
+              <Image src="/kay-thi-logo.png" alt="Kay Thi (Myawady)" width={455} height={205} className="h-20 w-auto object-contain" priority />
             </div>
             <h1 className="text-2xl font-black text-slate-900 outfit tracking-tight">Welcome Back</h1>
-            <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm mt-1 font-medium">Enter your credentials to access GarageFlow</p>
+            <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm mt-1 font-medium">Enter your credentials to access Kay Thi Transport</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">

@@ -42,7 +42,7 @@ const DUMMY_NOTIFICATIONS: Notification[] = [
   {
     id: "notif-4",
     title: "System Update",
-    description: "GarageFlow OS will undergo scheduled maintenance at 00:00 UTC. Expect 15 mins of downtime.",
+    description: "Kay Thi Transport OS will undergo scheduled maintenance at 00:00 UTC. Expect 15 mins of downtime.",
     time: "1 day ago",
     type: 'system',
     isRead: true
@@ -101,7 +101,7 @@ export default function NotificationsPage() {
            <h2 className="text-3xl md:text-4xl font-black text-slate-800 dark:text-slate-100 tracking-tight outfit flex items-center gap-3">
              <Bell className="w-8 h-8 text-primary" /> Notifications
            </h2>
-           <p className="text-sm font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500 mt-1">Review alerts, updates, and messages from the GarageFlow system.</p>
+           <p className="text-sm font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500 mt-1">Review alerts, updates, and messages from the Kay Thi Transport system.</p>
         </div>
         <div className="flex gap-3">
           <button 

@@ -3,23 +3,28 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, LogIn, ShoppingCart, Package, ScrollText, Users } from "lucide-react";
+import { LayoutDashboard, Truck, ShoppingCart, Package, ScrollText, Users, Receipt } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
 const links = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Incoming", href: "/incoming", icon: LogIn },
+  { name: "Incoming", href: "/incoming", icon: Truck },
   { name: "Orders", href: "/orders", icon: ShoppingCart },
   { name: "Customers", href: "/customers", icon: Users },
   { name: "Inventory", href: "/inventory", icon: Package },
   { name: "Logs", href: "/logs", icon: ScrollText },
+  { name: "Billing", href: "/invoices", icon: Receipt },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const [isHovered, setIsHovered] = useState(false);
+
+  if (['/', '/login', '/register'].includes(pathname)) {
+    return null;
+  }
 
   return (
     <motion.aside 
@@ -30,12 +35,12 @@ export function Sidebar() {
         width: isHovered ? "220px" : "68px",
         x: 0 
       }}
-      className="fixed left-6 top-1/2 -translate-y-1/2 z-[100] bg-white dark:bg-black/60 rounded-[2.5rem] border border-slate-200 dark:border-white/10 shadow-premium flex flex-col items-center py-8 gap-8 overflow-hidden backdrop-blur-2xl group transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]"
+      className="fixed left-6 top-1/2 -translate-y-1/2 z-[45] hidden lg:flex bg-white dark:bg-black/60 rounded-[2rem] border border-slate-200 dark:border-white/10 shadow-premium flex-col items-center py-7 gap-7 overflow-hidden backdrop-blur-2xl group transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]"
     >
       {/* App Logo/Icon */}
       <div className="relative flex items-center justify-center">
-        <div className="w-10 h-10 rounded-2xl bg-white border border-slate-200 flex items-center justify-center overflow-hidden shadow-[0_0_20px_rgba(37,99,235,0.16)]">
-          <Image src="/kt-logistic-logo.jpg" alt="KT Logistic & Trading" width={842} height={595} className="h-9 w-auto max-w-none object-contain" />
+        <div className="w-10 h-10 flex items-center justify-center overflow-hidden">
+          <Image src="/kt-logistic-logo.jpg" alt="KT Logistic & Trading" width={842} height={595} className="h-10 w-auto max-w-none object-contain" />
         </div>
         <AnimatePresence>
           {isHovered && (
@@ -104,27 +109,6 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Profile Section (always shown icon, expand info on hover) */}
-      <div className="w-full px-3 pt-6 border-t border-white/5 mt-auto">
-        <div className="flex items-center gap-4 px-1">
-          <div className="w-10 h-10 rounded-full bg-[#ffffff05] border border-white/10 flex items-center justify-center flex-shrink-0 group-hover:ring-2 ring-orange-500/30 transition-all">
-            <span className="font-bold text-gray-400 text-xs">JS</span>
-          </div>
-          <AnimatePresence>
-            {isHovered && (
-              <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                className="overflow-hidden"
-              >
-                <p className="text-xs font-bold whitespace-nowrap">John Smith</p>
-                <p className="text-[10px] text-gray-500 whitespace-nowrap">Manager</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
     </motion.aside>
   );
 }

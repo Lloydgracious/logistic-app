@@ -74,10 +74,9 @@ export function Navbar() {
             <span className="flex items-center">
               <Image src="/kt-logistic-logo.jpg" alt="KT Logistic & Trading" width={842} height={595} className="h-11 w-auto max-w-[190px] object-contain" priority />
             </span>
-            <span className="hidden xl:block font-black text-[10px] tracking-[0.2em] text-slate-500 dark:text-zinc-400 uppercase">Logistic OS</span>
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-1">
+          <nav className="hidden xl:flex items-center gap-1">
             {links.map((link) => {
               const isActive = pathname === link.href;
               const Icon = link.icon;

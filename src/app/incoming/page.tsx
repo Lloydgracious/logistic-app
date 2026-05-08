@@ -152,22 +152,37 @@ export default function IncomingPage() {
                  </div>
                  <div className="space-y-3">
                     {items.map((it, idx) => (
-                      <div key={idx} className="grid grid-cols-1 lg:grid-cols-[1.25fr_0.95fr_0.95fr_0.5fr_0.5fr_auto] gap-3 items-start lg:items-center group">
-                        <input value={it.name} onChange={e=>updateItemRow(idx, 'name', e.target.value)} placeholder="Item Name" className="w-full bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
-                        <select
-                          value={it.inventorySectionId || defaultSectionId}
-                          onChange={e=>updateItemRow(idx, 'inventorySectionId', e.target.value)}
-                          className="w-full bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all font-black uppercase"
-                        >
-                          <option value="">Choose inventory header</option>
-                          {inventorySections.map((section) => (
-                            <option key={section.id} value={section.id}>{section.title}</option>
-                          ))}
-                        </select>
-                        <input value={it.containerNumber} onChange={e=>updateItemRow(idx, 'containerNumber', e.target.value)} placeholder="Container" className="w-full bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all uppercase font-bold" />
-                        <input value={it.quantity} type="number" onChange={e=>updateItemRow(idx, 'quantity', e.target.value)} placeholder="Qty" className="w-full bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
-                        <input value={it.unit} onChange={e=>updateItemRow(idx, 'unit', e.target.value)} placeholder="Unit" className="w-full bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
-                        <div className="flex lg:justify-end">
+                      <div key={idx} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1.25fr_0.65fr_0.65fr_auto] gap-4 items-end group border border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-zinc-950/30 p-4 rounded-none">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-slate-500 uppercase font-black px-1 tracking-wider">Header</label>
+                          <select
+                            value={it.inventorySectionId || defaultSectionId}
+                            onChange={e=>updateItemRow(idx, 'inventorySectionId', e.target.value)}
+                            className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-black uppercase"
+                          >
+                            <option value="">Choose header</option>
+                            {inventorySections.map((section) => (
+                              <option key={section.id} value={section.id}>{section.title}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-slate-500 uppercase font-black px-1 tracking-wider">Container</label>
+                          <input value={it.containerNumber} onChange={e=>updateItemRow(idx, 'containerNumber', e.target.value)} placeholder="CNT-001" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all uppercase font-bold" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-slate-500 uppercase font-black px-1 tracking-wider">Product Name</label>
+                          <input value={it.name} onChange={e=>updateItemRow(idx, 'name', e.target.value)} placeholder="Item name" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-slate-500 uppercase font-black px-1 tracking-wider">Quantity</label>
+                          <input value={it.quantity} type="number" onChange={e=>updateItemRow(idx, 'quantity', e.target.value)} placeholder="0" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] text-slate-500 uppercase font-black px-1 tracking-wider">Unit</label>
+                          <input value={it.unit} onChange={e=>updateItemRow(idx, 'unit', e.target.value)} placeholder="Kg, Pcs" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium" />
+                        </div>
+                        <div className="flex xl:justify-end">
                           <button onClick={() => removeItemRow(idx)} className="lg:opacity-0 group-hover:opacity-100 p-2.5 text-slate-400 hover:text-rose-500 transition-all border border-transparent hover:border-rose-100">
                               <Trash className="w-4 h-4" />
                             </button>

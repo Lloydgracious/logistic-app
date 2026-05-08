@@ -42,7 +42,7 @@ const DUMMY_NOTIFICATIONS: Notification[] = [
   {
     id: "notif-4",
     title: "System Update",
-    description: "KT Logistic OS will undergo scheduled maintenance at 00:00 UTC. Expect 15 mins of downtime.",
+    description: "KT Logistic will undergo scheduled maintenance at 00:00 UTC. Expect 15 mins of downtime.",
     time: "1 day ago",
     type: 'system',
     isRead: true

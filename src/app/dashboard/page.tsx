@@ -89,7 +89,7 @@ export default function Dashboard() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4">
         <div>
           <h1 className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tighter outfit uppercase italic">
-            Fleet <span className="text-rose-500">Intelligence</span>
+            KT Logistic <span className="text-rose-500">& Trading</span>
           </h1>
           <p className="text-slate-400 dark:text-zinc-500 dark:text-zinc-600 mt-1 font-black uppercase tracking-[0.2em] flex items-center gap-2 text-[10px]">
              Live Operations <span className="text-rose-500 animate-pulse">●</span> <ClientDate format="time" />
@@ -117,9 +117,6 @@ export default function Dashboard() {
           <AnimatedCar type="loop" />
         </div>
 
-        <div className="absolute top-6 left-6 z-10">
-           <div className="bg-rose-600 text-white px-3 py-1 font-black text-[10px] uppercase tracking-[0.2em] shadow-lg">LIVE SIMULATION</div>
-        </div>
       </div>
 
       {/* Stats Grid */}

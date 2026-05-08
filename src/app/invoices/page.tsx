@@ -26,11 +26,107 @@ type SavedReceipt = {
   html: string;
 };
 
+const escapeReceiptText = (value: string | number) =>
+  String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
 const onePagePrintStyles = `
-  @page { size: A4; margin: 8mm; }
+  @page { size: A4; margin: 4mm; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; box-sizing: border-box; }
-  html, body { margin: 0; width: 210mm; min-height: 297mm; background: white; color: #0f172a; font-family: Arial, sans-serif; }
+  html, body { margin: 0; background: white; color: #0f172a; font-family: Arial, sans-serif; }
   body { overflow: hidden; }
+  .compact-receipt {
+    width: 188mm;
+    max-height: 245mm;
+    margin: 0 auto;
+    padding: 0;
+    background: #fff;
+    color: #0f172a;
+    overflow: hidden;
+  }
+  .compact-header {
+    display: grid;
+    grid-template-columns: 1fr 48mm;
+    gap: 8mm;
+    align-items: start;
+    border-bottom: 2px solid #0f172a;
+    padding-bottom: 4mm;
+    margin-bottom: 4mm;
+  }
+  .compact-logo { width: 42mm; height: auto; display: block; margin-bottom: 2mm; }
+  .compact-company { font-size: 16px; line-height: 1; font-weight: 900; text-transform: uppercase; letter-spacing: -0.02em; }
+  .compact-subtitle { margin-top: 1.5mm; font-size: 7px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.14em; color: #475569; }
+  .compact-details { margin-top: 2mm; display: grid; gap: 0.7mm; }
+  .compact-detail { font-size: 7px; line-height: 1.18; font-weight: 700; text-transform: uppercase; color: #475569; }
+  .compact-meta { text-align: right; }
+  .compact-title { margin: 0 0 4mm; font-size: 28px; line-height: 0.9; font-weight: 900; font-style: italic; text-transform: uppercase; color: #dbe3ef; letter-spacing: -0.04em; }
+  .compact-meta-grid { display: grid; gap: 2mm; }
+  .compact-meta-row { display: grid; grid-template-columns: 15mm 1fr; align-items: baseline; gap: 2mm; }
+  .compact-label { font-size: 7px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.18em; color: #94a3b8; }
+  .compact-value { font-size: 9px; font-weight: 900; text-transform: uppercase; color: #0f172a; }
+  .compact-billing {
+    display: grid;
+    grid-template-columns: 31mm 1fr;
+    align-items: baseline;
+    gap: 3mm;
+    margin-bottom: 5mm;
+    padding-bottom: 3mm;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .compact-billing-name { font-size: 14px; font-weight: 900; text-transform: uppercase; color: #0f172a; }
+  .compact-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .compact-table th {
+    padding: 2mm 1.2mm;
+    border-bottom: 2px solid #0f172a;
+    font-size: 6.5px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: #64748b;
+  }
+  .compact-table td {
+    padding: 2.3mm 1.2mm;
+    border-bottom: 1px solid #eef2f7;
+    font-size: 9px;
+    font-weight: 900;
+    color: #0f172a;
+    vertical-align: top;
+  }
+  .compact-table .muted { display: block; margin-top: 0.7mm; font-size: 6.5px; color: #94a3b8; letter-spacing: 0.06em; }
+  .compact-right { text-align: right; }
+  .compact-center { text-align: center; }
+  .compact-total {
+    width: 72mm;
+    margin: 7mm 0 0 auto;
+    border-top: 2px solid #0f172a;
+    padding-top: 3mm;
+  }
+  .compact-total-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6mm;
+    align-items: baseline;
+    margin-bottom: 2mm;
+    color: #64748b;
+    font-size: 8px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+  .compact-total-due {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6mm;
+    align-items: baseline;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 3mm;
+    margin-top: 3mm;
+  }
+  .compact-due-label { font-size: 8px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.22em; color: #0891b2; }
+  .compact-due-value { font-size: 26px; line-height: 1; font-weight: 900; font-style: italic; color: #0f172a; letter-spacing: -0.06em; }
   .invoice-document {
     width: 194mm !important;
     max-width: 194mm !important;
@@ -118,14 +214,95 @@ export default function InvoicePage() {
     return items.reduce((acc, item, index) => acc + (item.quantity * getItemRate(index)), 0);
   };
 
+  const buildCurrentReceiptHtml = () => {
+    if (!selectedOrder) return "";
+
+    const rows = selectedOrder.items.map((item, index) => {
+      const rate = getItemRate(index);
+      const lineTotal = item.quantity * rate;
+
+      return `
+        <tr>
+          <td style="width: 46%;">
+            ${escapeReceiptText(item.name)}
+            <span class="muted">Industrial Grade Asset</span>
+          </td>
+          <td class="compact-center" style="width: 16%;">${escapeReceiptText(item.quantity)} ${escapeReceiptText(item.unit || "U")}</td>
+          <td class="compact-right" style="width: 18%;">${rate.toFixed(2)}</td>
+          <td class="compact-right" style="width: 20%;">${lineTotal.toFixed(2)}</td>
+        </tr>
+      `;
+    }).join("");
+    const total = calculateTotal(selectedOrder.items);
+
+    return `
+      <main class="compact-receipt">
+        <section class="compact-header">
+          <div>
+            <img src="/kt-logistic-logo.jpg" alt="KT Logistic & Trading" class="compact-logo" />
+            <div class="compact-company">KT Logistic & Trading</div>
+            <div class="compact-subtitle">Kay Thi (Myawady) Trading Company Limited</div>
+            <div class="compact-details">
+              ${companyDetails.map((detail) => `<div class="compact-detail">${escapeReceiptText(detail)}</div>`).join("")}
+            </div>
+          </div>
+          <div class="compact-meta">
+            <h1 class="compact-title">Invoice</h1>
+            <div class="compact-meta-grid">
+              <div class="compact-meta-row">
+                <span class="compact-label">ID</span>
+                <span class="compact-value">${escapeReceiptText(resolvedManifestId)}</span>
+              </div>
+              <div class="compact-meta-row">
+                <span class="compact-label">Date</span>
+                <span class="compact-value">${escapeReceiptText(resolvedDocumentDate)}</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="compact-billing">
+          <span class="compact-label">Billing Name</span>
+          <span class="compact-billing-name">${escapeReceiptText(selectedOrder.customerName)}</span>
+        </section>
+
+        <table class="compact-table">
+          <thead>
+            <tr>
+              <th>Cargo Description</th>
+              <th class="compact-center">Alloc. Qty</th>
+              <th class="compact-right">Rate (M)</th>
+              <th class="compact-right">Total Credits</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+
+        <section class="compact-total">
+          <div class="compact-total-row">
+            <span>Subtotal (Credits)</span>
+            <span>${total.toFixed(2)}</span>
+          </div>
+          <div class="compact-total-row">
+            <span>Protocol Tax (0%)</span>
+            <span>0.00</span>
+          </div>
+          <div class="compact-total-due">
+            <span class="compact-due-label">Total Credits Due</span>
+            <span class="compact-due-value">${total.toFixed(2)}</span>
+          </div>
+        </section>
+      </main>
+    `;
+  };
+
   const persistReceipts = (receipts: SavedReceipt[]) => {
     setSavedReceipts(receipts);
     window.localStorage.setItem(SAVED_RECEIPTS_KEY, JSON.stringify(receipts));
   };
 
   const saveCurrentReceipt = () => {
-    const invoiceElement = document.getElementById("invoice-export-document");
-    if (!selectedOrder || !invoiceElement) return null;
+    if (!selectedOrder) return null;
 
     const receipt: SavedReceipt = {
       id: `${selectedOrder.id}:${resolvedManifestId}:${resolvedDocumentDate}`,
@@ -135,7 +312,7 @@ export default function InvoicePage() {
       customerName: selectedOrder.customerName,
       total: calculateTotal(selectedOrder.items),
       savedAt: new Date().toISOString(),
-      html: invoiceElement.outerHTML,
+      html: buildCurrentReceiptHtml(),
     };
 
     const nextReceipts = [
@@ -213,11 +390,10 @@ export default function InvoicePage() {
   };
 
   const handleExportPdf = () => {
-    const invoiceElement = document.getElementById("invoice-export-document");
-    if (!selectedOrder || !invoiceElement) return;
+    if (!selectedOrder) return;
 
     saveCurrentReceipt();
-    openReceiptPrintWindow(invoiceElement.outerHTML, resolvedManifestId);
+    openReceiptPrintWindow(buildCurrentReceiptHtml(), resolvedManifestId);
   };
 
   return (

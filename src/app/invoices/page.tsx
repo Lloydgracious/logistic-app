@@ -2,9 +2,9 @@
 
 import { useStore } from "@/lib/store";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Receipt, FileText, Printer, Download, ArrowRight, User, Calendar, BadgeDollarSign } from "lucide-react";
+import { Receipt, FileText, Printer, Download, ArrowRight, User, Calendar, BadgeDollarSign, Save, Trash2 } from "lucide-react";
 
 const companyDetails = [
   "No.(C/21), Qtr 1, Near Chit Kyi Yay Bridge, Ba Yint Naung Road, Myawaddy.",
@@ -13,6 +13,77 @@ const companyDetails = [
   "kay.t.win67@gmail.com",
 ];
 
+const SAVED_RECEIPTS_KEY = "kt-logistic-saved-receipts";
+
+type SavedReceipt = {
+  id: string;
+  orderId: string;
+  manifestId: string;
+  documentDate: string;
+  customerName: string;
+  total: number;
+  savedAt: string;
+  html: string;
+};
+
+const onePagePrintStyles = `
+  @page { size: A4; margin: 8mm; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; box-sizing: border-box; }
+  html, body { margin: 0; width: 210mm; min-height: 297mm; background: white; color: #0f172a; font-family: Arial, sans-serif; }
+  body { overflow: hidden; }
+  .invoice-document {
+    width: 194mm !important;
+    max-width: 194mm !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    padding: 7mm !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    color: #0f172a !important;
+    overflow: hidden !important;
+  }
+  .receipt-decoration { display: none !important; }
+  .receipt-header {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    gap: 8mm !important;
+    margin-bottom: 8mm !important;
+    padding-bottom: 5mm !important;
+    border-bottom: 2px solid #0f172a !important;
+  }
+  .receipt-company { max-width: 118mm !important; }
+  .receipt-logo-card { border: 0 !important; padding: 0 !important; margin-bottom: 3mm !important; background: white !important; }
+  .receipt-logo { height: 24mm !important; width: auto !important; object-fit: contain !important; }
+  .receipt-company-title { font-size: 21px !important; line-height: 0.95 !important; letter-spacing: 0 !important; color: #0f172a !important; }
+  .receipt-company-subtitle { font-size: 8px !important; letter-spacing: 0.12em !important; margin-top: 2mm !important; color: #475569 !important; }
+  .receipt-company-details { margin-top: 3mm !important; }
+  .receipt-company-detail { font-size: 8px !important; line-height: 1.25 !important; letter-spacing: 0.02em !important; color: #475569 !important; }
+  .receipt-meta { text-align: right !important; min-width: 44mm !important; }
+  .receipt-invoice-title { font-size: 34px !important; line-height: 1 !important; color: #cbd5e1 !important; }
+  .receipt-meta-label { font-size: 8px !important; letter-spacing: 0.18em !important; color: #94a3b8 !important; }
+  .receipt-meta-value { font-size: 10px !important; color: #0f172a !important; }
+  .receipt-meta-stack { margin-top: 5mm !important; }
+  .receipt-billing { margin-bottom: 7mm !important; }
+  .receipt-billing-label { margin-bottom: 2mm !important; color: #06b6d4 !important; }
+  .receipt-billing-name { font-size: 15px !important; color: #0f172a !important; }
+  .receipt-table-wrap { margin-bottom: 7mm !important; overflow: visible !important; }
+  .receipt-table { width: 100% !important; min-width: 0 !important; table-layout: fixed !important; border-collapse: collapse !important; }
+  .receipt-table th { padding: 2.5mm 1.5mm !important; font-size: 7px !important; letter-spacing: 0.14em !important; border-bottom: 2px solid #0f172a !important; }
+  .receipt-table td { padding: 2.6mm 1.5mm !important; }
+  .receipt-item-name { font-size: 10px !important; color: #0f172a !important; }
+  .receipt-item-subtitle { display: none !important; }
+  .receipt-cell { font-size: 10px !important; color: #334155 !important; }
+  .receipt-total-wrap { justify-content: flex-end !important; }
+  .receipt-total-box { max-width: 72mm !important; padding-top: 4mm !important; border-top: 2px solid #0f172a !important; }
+  .receipt-total-row { margin-bottom: 1.5mm !important; gap: 6mm !important; }
+  .receipt-total-label { font-size: 7px !important; letter-spacing: 0.12em !important; }
+  .receipt-total-due { padding-top: 3mm !important; }
+  .receipt-total-value { font-size: 30px !important; line-height: 1 !important; color: #0f172a !important; }
+`;
+
 export default function InvoicePage() {
   const { orders } = useStore();
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -20,6 +91,16 @@ export default function InvoicePage() {
   const [manifestId, setManifestId] = useState("");
   const [defaultRate, setDefaultRate] = useState("100");
   const [itemRates, setItemRates] = useState<Record<string, string>>({});
+  const [savedReceipts, setSavedReceipts] = useState<SavedReceipt[]>([]);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(SAVED_RECEIPTS_KEY);
+      if (stored) setSavedReceipts(JSON.parse(stored));
+    } catch {
+      setSavedReceipts([]);
+    }
+  }, []);
 
   const selectedOrder = orders.find(o => o.id === selectedOrderId);
   const resolvedManifestId = manifestId.trim() || (selectedOrder ? `ID-${selectedOrder.id.toUpperCase()}` : "ID-DRAFT");
@@ -35,6 +116,73 @@ export default function InvoicePage() {
 
   const calculateTotal = (items: { quantity: number }[]) => {
     return items.reduce((acc, item, index) => acc + (item.quantity * getItemRate(index)), 0);
+  };
+
+  const persistReceipts = (receipts: SavedReceipt[]) => {
+    setSavedReceipts(receipts);
+    window.localStorage.setItem(SAVED_RECEIPTS_KEY, JSON.stringify(receipts));
+  };
+
+  const saveCurrentReceipt = () => {
+    const invoiceElement = document.getElementById("invoice-export-document");
+    if (!selectedOrder || !invoiceElement) return null;
+
+    const receipt: SavedReceipt = {
+      id: `${selectedOrder.id}:${resolvedManifestId}:${resolvedDocumentDate}`,
+      orderId: selectedOrder.id,
+      manifestId: resolvedManifestId,
+      documentDate: resolvedDocumentDate,
+      customerName: selectedOrder.customerName,
+      total: calculateTotal(selectedOrder.items),
+      savedAt: new Date().toISOString(),
+      html: invoiceElement.outerHTML,
+    };
+
+    const nextReceipts = [
+      receipt,
+      ...savedReceipts.filter((savedReceipt) => savedReceipt.id !== receipt.id),
+    ].slice(0, 30);
+
+    persistReceipts(nextReceipts);
+    return receipt;
+  };
+
+  const deleteSavedReceipt = (receiptId: string) => {
+    persistReceipts(savedReceipts.filter((receipt) => receipt.id !== receiptId));
+  };
+
+  const openReceiptPrintWindow = (html: string, title: string) => {
+    const printWindow = window.open("", "_blank", "width=900,height=1200");
+    if (!printWindow) {
+      window.print();
+      return;
+    }
+
+    const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map((element) => element.outerHTML)
+      .join("\n");
+
+    printWindow.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <title>${title}</title>
+          <base href="${window.location.origin}" />
+          ${styles}
+          <style>${onePagePrintStyles}</style>
+        </head>
+        <body>
+          ${html}
+          <script>
+            window.addEventListener("load", function () {
+              window.focus();
+              window.print();
+            });
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   const handleSelectOrder = (orderId: string) => {
@@ -68,42 +216,8 @@ export default function InvoicePage() {
     const invoiceElement = document.getElementById("invoice-export-document");
     if (!selectedOrder || !invoiceElement) return;
 
-    const printWindow = window.open("", "_blank", "width=900,height=1200");
-    if (!printWindow) {
-      window.print();
-      return;
-    }
-
-    const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
-      .map((element) => element.outerHTML)
-      .join("\n");
-
-    printWindow.document.write(`
-      <!doctype html>
-      <html>
-        <head>
-          <title>${resolvedManifestId}</title>
-          <base href="${window.location.origin}" />
-          ${styles}
-          <style>
-            @page { size: A4; margin: 14mm; }
-            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            body { margin: 0; background: white; color: #0f172a; font-family: Arial, sans-serif; }
-            .invoice-document { border: 0 !important; box-shadow: none !important; min-height: auto !important; }
-          </style>
-        </head>
-        <body>
-          ${invoiceElement.outerHTML}
-          <script>
-            window.addEventListener("load", function () {
-              window.focus();
-              window.print();
-            });
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+    saveCurrentReceipt();
+    openReceiptPrintWindow(invoiceElement.outerHTML, resolvedManifestId);
   };
 
   return (
@@ -120,11 +234,18 @@ export default function InvoicePage() {
 
         <div className="flex items-center gap-2">
            <button 
-             onClick={() => window.print()} 
+             onClick={handleExportPdf} 
              disabled={!selectedOrder}
              className="flex items-center gap-2 bg-slate-900 text-white px-5 py-3 rounded-none font-black text-[10px] uppercase tracking-widest hover:bg-cyan-600 disabled:opacity-30 disabled:bg-slate-400 transition-all shadow-xl"
            >
-             <Printer className="w-4 h-4" /> Print Document
+             <Printer className="w-4 h-4" /> Print Receipt
+           </button>
+           <button 
+             onClick={saveCurrentReceipt}
+             disabled={!selectedOrder}
+             className="flex items-center gap-2 bg-cyan-600 text-white px-5 py-3 rounded-none font-black text-[10px] uppercase tracking-widest hover:bg-slate-900 disabled:opacity-30 disabled:bg-slate-400 transition-all shadow-xl"
+           >
+             <Save className="w-4 h-4" /> Save Receipt
            </button>
            <button 
              onClick={handleExportPdf}
@@ -227,6 +348,40 @@ export default function InvoicePage() {
               </div>
            </div>
 
+           <div className="saas-card p-6 rounded-none border border-slate-100 dark:border-zinc-800 bg-white dark:bg-black">
+              <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 border-b border-slate-100 dark:border-zinc-800 pb-3">Saved Receipts</h3>
+              <div className="space-y-3">
+                {savedReceipts.map((receipt) => (
+                  <div key={receipt.id} className="border border-slate-100 dark:border-zinc-800 p-3 rounded-none bg-slate-50 dark:bg-zinc-900/40">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-tight truncate">{receipt.customerName}</p>
+                        <p className="text-[10px] text-cyan-600 font-black uppercase tracking-widest mt-0.5">{receipt.manifestId}</p>
+                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">{receipt.documentDate} / {receipt.total.toFixed(2)} credits</p>
+                      </div>
+                      <button
+                        onClick={() => deleteSavedReceipt(receipt.id)}
+                        className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
+                        aria-label="Delete saved receipt"
+                        title="Delete saved receipt"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => openReceiptPrintWindow(receipt.html, receipt.manifestId)}
+                      className="mt-3 w-full flex items-center justify-center gap-2 border border-slate-200 dark:border-zinc-800 bg-white dark:bg-black px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-zinc-300 hover:border-cyan-500 hover:text-cyan-600 transition-all"
+                    >
+                      <Printer className="w-3.5 h-3.5" /> Print Saved Receipt
+                    </button>
+                  </div>
+                ))}
+                {savedReceipts.length === 0 && (
+                  <p className="text-center py-8 text-xs text-slate-400 font-black uppercase tracking-widest">No saved receipts yet.</p>
+                )}
+              </div>
+           </div>
+
            <div className="saas-card p-6 rounded-none border border-slate-100 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 text-slate-400">
               <div className="flex items-center gap-3 mb-4">
                  <FileText className="w-5 h-5" />
@@ -249,50 +404,50 @@ export default function InvoicePage() {
                    className="invoice-document bg-white dark:bg-zinc-950 p-10 md:p-16 border border-slate-200 dark:border-zinc-800 shadow-2xl relative overflow-hidden"
                  >
                     {/* Invoice Decoration */}
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 -mr-32 -mt-32 rotate-45 pointer-events-none" />
+                    <div className="receipt-decoration absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 -mr-32 -mt-32 rotate-45 pointer-events-none" />
                     
-                    <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-16 border-b-4 border-slate-950 dark:border-white pb-10">
-                       <div className="max-w-xl">
-                          <div className="bg-white border border-slate-200 p-3 inline-flex mb-6">
-                            <Image src="/kt-logistic-logo.jpg" alt="KT Logistic & Trading" width={842} height={595} className="h-32 w-auto object-contain" priority />
+                    <div className="receipt-header flex flex-col md:flex-row justify-between items-start gap-8 mb-16 border-b-4 border-slate-950 dark:border-white pb-10">
+                       <div className="receipt-company max-w-xl">
+                          <div className="receipt-logo-card bg-white border border-slate-200 p-3 inline-flex mb-6">
+                            <Image src="/kt-logistic-logo.jpg" alt="KT Logistic & Trading" width={842} height={595} className="receipt-logo h-32 w-auto object-contain" priority />
                           </div>
-                          <h1 className="text-3xl md:text-4xl font-black outfit tracking-tighter text-slate-950 dark:text-white uppercase leading-none">
+                          <h1 className="receipt-company-title text-3xl md:text-4xl font-black outfit tracking-tighter text-slate-950 dark:text-white uppercase leading-none">
                             KT Logistic <span className="text-cyan-500 italic">& Trading</span>
                           </h1>
-                          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 mt-3">
+                          <p className="receipt-company-subtitle text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 mt-3">
                             Kay Thi (Myawady) Trading Company Limited
                           </p>
-                          <div className="mt-5 space-y-1">
+                          <div className="receipt-company-details mt-5 space-y-1">
                             {companyDetails.map((detail) => (
-                              <p key={detail} className="text-[10px] md:text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-zinc-400 leading-relaxed">
+                              <p key={detail} className="receipt-company-detail text-[10px] md:text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-zinc-400 leading-relaxed">
                                 {detail}
                               </p>
                             ))}
                           </div>
                        </div>
-                       <div className="text-right">
-                          <h2 className="text-6xl font-black outfit tracking-tighter text-slate-200 dark:text-zinc-800 uppercase italic">Invoice</h2>
-                          <div className="mt-8 space-y-2">
-                             <p className="text-xs font-black text-slate-400 uppercase tracking-widest">ID</p>
-                             <p className="text-sm font-black text-slate-900 dark:text-white uppercase">{resolvedManifestId}</p>
-                             <p className="text-xs font-black text-slate-400 uppercase tracking-widest pt-4">Date</p>
-                             <p className="text-sm font-black text-slate-900 dark:text-white uppercase">{resolvedDocumentDate}</p>
+                       <div className="receipt-meta text-right">
+                          <h2 className="receipt-invoice-title text-6xl font-black outfit tracking-tighter text-slate-200 dark:text-zinc-800 uppercase italic">Invoice</h2>
+                          <div className="receipt-meta-stack mt-8 space-y-2">
+                             <p className="receipt-meta-label text-xs font-black text-slate-400 uppercase tracking-widest">ID</p>
+                             <p className="receipt-meta-value text-sm font-black text-slate-900 dark:text-white uppercase">{resolvedManifestId}</p>
+                             <p className="receipt-meta-label text-xs font-black text-slate-400 uppercase tracking-widest pt-4">Date</p>
+                             <p className="receipt-meta-value text-sm font-black text-slate-900 dark:text-white uppercase">{resolvedDocumentDate}</p>
                           </div>
                        </div>
                     </div>
 
-                    <div className="mb-16">
+                    <div className="receipt-billing mb-16">
                        <div>
-                          <div className="flex items-center gap-2 mb-4 text-cyan-500">
+                          <div className="receipt-billing-label flex items-center gap-2 mb-4 text-cyan-500">
                              <User className="w-4 h-4" />
                              <span className="text-[10px] font-black uppercase tracking-[0.3em]">Billing Name</span>
                           </div>
-                          <h4 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{selectedOrder.customerName}</h4>
+                          <h4 className="receipt-billing-name text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{selectedOrder.customerName}</h4>
                        </div>
                     </div>
 
-                    <div className="mb-16 overflow-x-auto custom-scrollbar">
-                       <table className="w-full text-left min-w-[600px]">
+                    <div className="receipt-table-wrap mb-16 overflow-x-auto custom-scrollbar">
+                       <table className="receipt-table w-full text-left min-w-[600px]">
                           <thead>
                              <tr className="border-b-2 border-slate-900 dark:border-white">
                                 <th className="py-4 text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Cargo Description</th>
@@ -305,17 +460,17 @@ export default function InvoicePage() {
                              {selectedOrder.items.map((item, idx) => (
                                 <tr key={idx}>
                                    <td className="py-6">
-                                      <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">{item.name}</p>
-                                      <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">Industrial Grade Asset</p>
+                                      <p className="receipt-item-name text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">{item.name}</p>
+                                      <p className="receipt-item-subtitle text-[9px] text-slate-400 font-bold uppercase mt-1">Industrial Grade Asset</p>
                                    </td>
                                    <td className="py-6 text-center">
-                                      <span className="text-sm font-black text-slate-600 dark:text-zinc-400 uppercase">{item.quantity} <span className="text-[9px] text-slate-400 ml-1">{item.unit || "U"}</span></span>
+                                      <span className="receipt-cell text-sm font-black text-slate-600 dark:text-zinc-400 uppercase">{item.quantity} <span className="text-[9px] text-slate-400 ml-1">{item.unit || "U"}</span></span>
                                    </td>
                                    <td className="py-6 text-right">
-                                      <span className="text-sm font-black text-slate-600 dark:text-zinc-400">{getItemRate(idx).toFixed(2)}</span>
+                                      <span className="receipt-cell text-sm font-black text-slate-600 dark:text-zinc-400">{getItemRate(idx).toFixed(2)}</span>
                                    </td>
                                    <td className="py-6 text-right">
-                                      <span className="text-sm font-black text-slate-900 dark:text-white">{(item.quantity * getItemRate(idx)).toFixed(2)}</span>
+                                      <span className="receipt-cell text-sm font-black text-slate-900 dark:text-white">{(item.quantity * getItemRate(idx)).toFixed(2)}</span>
                                    </td>
                                 </tr>
                              ))}
@@ -323,19 +478,19 @@ export default function InvoicePage() {
                        </table>
                     </div>
 
-                    <div className="flex justify-end">
-                       <div className="border-t-4 border-slate-950 dark:border-white pt-6 w-full max-w-md">
-                          <div className="grid grid-cols-[1fr_auto] gap-6 items-center text-slate-400 font-black mb-2">
-                             <span className="text-[10px] uppercase tracking-widest">Subtotal (Credits)</span>
+                    <div className="receipt-total-wrap flex justify-end">
+                       <div className="receipt-total-box border-t-4 border-slate-950 dark:border-white pt-6 w-full max-w-md">
+                          <div className="receipt-total-row grid grid-cols-[1fr_auto] gap-6 items-center text-slate-400 font-black mb-2">
+                             <span className="receipt-total-label text-[10px] uppercase tracking-widest">Subtotal (Credits)</span>
                              <span className="text-sm">{calculateTotal(selectedOrder.items).toFixed(2)}</span>
                           </div>
-                          <div className="grid grid-cols-[1fr_auto] gap-6 items-center text-slate-400 font-black mb-6">
-                             <span className="text-[10px] uppercase tracking-widest">Protocol Tax (0%)</span>
+                          <div className="receipt-total-row grid grid-cols-[1fr_auto] gap-6 items-center text-slate-400 font-black mb-6">
+                             <span className="receipt-total-label text-[10px] uppercase tracking-widest">Protocol Tax (0%)</span>
                              <span className="text-sm">0.00</span>
                           </div>
-                          <div className="grid grid-cols-[1fr_auto] gap-6 items-baseline border-t border-slate-100 dark:border-zinc-800 pt-5">
-                             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-cyan-600">Total Credits due</span>
-                             <span className="text-5xl md:text-6xl font-black text-slate-950 dark:text-white outfit tracking-tighter italic tabular-nums text-right">{calculateTotal(selectedOrder.items).toFixed(2)}</span>
+                          <div className="receipt-total-due grid grid-cols-[1fr_auto] gap-6 items-baseline border-t border-slate-100 dark:border-zinc-800 pt-5">
+                             <span className="receipt-total-label text-[10px] font-black uppercase tracking-[0.4em] text-cyan-600">Total Credits due</span>
+                             <span className="receipt-total-value text-5xl md:text-6xl font-black text-slate-950 dark:text-white outfit tracking-tighter italic tabular-nums text-right">{calculateTotal(selectedOrder.items).toFixed(2)}</span>
                           </div>
                        </div>
                     </div>

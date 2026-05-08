@@ -1,13 +1,12 @@
 "use client";
 
-import { Bell, Search, LayoutDashboard, Truck, ShoppingCart, Package, Moon, Sun, Layout, ScrollText, Receipt, Menu, X, Users } from "lucide-react";
+import { Bell, Search, LayoutDashboard, Truck, ShoppingCart, Package, Moon, Sun, ScrollText, Receipt, Menu, X, Users, LogOut } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
-import type { User } from "@supabase/supabase-js";
 
 const links = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -21,9 +20,7 @@ const links = [
 
 export function Navbar() {
   const pathname = usePathname();
-  const [user, setUser] = useState<User | null>(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const router = useRouter();
@@ -36,38 +33,6 @@ export function Navbar() {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
-  useEffect(() => {
-    const supabase = createClient();
-    if (!supabase) return;
-
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user);
-    });
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
-    });
-
-    return () => {
-      listener.subscription.unsubscribe();
-    };
-  }, []);
-
-  const metadata = user?.user_metadata || {};
-  const fullName = [metadata.first_name, metadata.last_name]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
-  const displayName = fullName || user?.email?.split("@")[0] || "GarageFlow User";
-  const companyName = metadata.company || "Global Fleet";
-  const userEmail = user?.email || "Not signed in";
-  const initials = displayName
-    .split(/\s+/)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-
   const toggleTheme = () => {
     if (isDarkMode) {
       document.documentElement.classList.remove('dark');
@@ -79,12 +44,10 @@ export function Navbar() {
   };
 
   const handleLogout = async () => {
-    setIsProfileOpen(false);
     const supabase = createClient();
     if (supabase) {
       await supabase.auth.signOut();
     }
-    setUser(null);
     router.push('/');
     router.refresh();
   };
@@ -164,38 +127,14 @@ export function Navbar() {
             <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-rose-500 rounded-none"></span>
           </Link>
 
-          <div className="relative">
-            <button 
-              onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className="flex items-center gap-3 pl-2 pr-1 py-1 border border-transparent hover:border-slate-200 dark:hover:border-slate-800 group transition-all"
-            >
-              <div className="text-right hidden sm:block">
-                  <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tight">{displayName}</p>
-                  <p className="text-[9px] font-bold text-rose-500 uppercase tracking-widest">{companyName}</p>
-              </div>
-              <div className="w-8 h-8 md:w-9 md:h-9 rounded-none bg-slate-900 dark:bg-white text-white dark:text-black flex items-center justify-center font-black outfit text-xs md:text-sm shadow-xl group-hover:bg-rose-500 group-hover:text-white transition-all">
-                 {initials || "GF"}
-              </div>
-            </button>
-
-            {isProfileOpen && (
-               <div className="absolute top-full right-0 mt-2 w-56 bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none shadow-2xl py-0 flex flex-col z-50 overflow-hidden">
-                  <div className="px-4 py-3 bg-slate-50 dark:bg-zinc-900 border-b border-slate-100 dark:border-slate-800">
-                     <p className="text-xs font-black text-slate-900 dark:text-white uppercase">{displayName}</p>
-                     <p className="text-[10px] text-rose-500 font-black uppercase tracking-widest">{companyName}</p>
-                     <p className="mt-1 text-[10px] text-slate-400 dark:text-zinc-500 font-bold tracking-tight">{userEmail}</p>
-                  </div>
-                  <Link href="/profile" onClick={() => setIsProfileOpen(false)} className="px-4 py-3 text-[11px] font-black uppercase text-slate-600 dark:text-zinc-400 hover:bg-rose-50 hover:text-rose-600 transition-colors flex items-center gap-3">
-                     <Layout className="w-4 h-4" />
-                     Profile Settings
-                  </Link>
-                  <button onClick={handleLogout} className="w-full text-left px-4 py-3 text-[11px] font-black uppercase text-rose-600 hover:bg-rose-600 hover:text-white transition-all flex items-center gap-3 border-t border-slate-50 dark:border-slate-800">
-                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
-                     Secure Log Out
-                  </button>
-               </div>
-            )}
-          </div>
+          <button
+            onClick={handleLogout}
+            className="hidden sm:flex w-9 h-9 border border-transparent hover:border-rose-200 dark:hover:border-rose-900/50 flex items-center justify-center text-slate-500 dark:text-zinc-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 hover:text-rose-600 transition-colors"
+            aria-label="Log out"
+            title="Log out"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </header>
 

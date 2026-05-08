@@ -7,6 +7,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { ClientDate } from "@/components/ClientDate";
+import { createClient } from "@/lib/supabase/client";
+import type { User } from "@supabase/supabase-js";
 
 const AnimatedCar = dynamic(() => import("@/components/AnimatedCar").then(mod => mod.AnimatedCar), { ssr: false });
 
@@ -39,6 +41,24 @@ function Counter({ value }: { value: number }) {
 
 export default function Dashboard() {
   const { incomingList, orders, inventory, containerStock } = useStore();
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    if (!supabase) return;
+
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+    });
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, []);
 
   const totalInventory = inventory.reduce((acc, item) => acc + item.quantity, 0);
   const incomingToday = incomingList.filter(i => i.status !== 'IN_GARAGE').length;
@@ -51,6 +71,17 @@ export default function Dashboard() {
     { title: "Pending Orders", value: ordersPending, icon: ShoppingCart, color: "border-cyan-500 bg-cyan-50/10", iconColor: "text-cyan-600", href: "/orders" },
     { title: "Stock Containers", value: activeContainers, icon: AlertTriangle, color: "border-amber-500 bg-amber-50/10", iconColor: "text-amber-600", href: "/inventory" },
   ];
+  const metadata = user?.user_metadata || {};
+  const fullName = [metadata.first_name, metadata.last_name].filter(Boolean).join(" ").trim();
+  const displayName = fullName || user?.email?.split("@")[0] || "Guest Operator";
+  const companyName = metadata.company || "GarageFlow";
+  const userEmail = user?.email || "Sign in to sync account";
+  const initials = displayName
+    .split(/\s+/)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <div className="space-y-8 pb-20 max-w-7xl mx-auto w-full animate-in fade-in slide-in-from-bottom-8 duration-500">
@@ -64,15 +95,15 @@ export default function Dashboard() {
              Live Operations <span className="text-rose-500 animate-pulse">●</span> <ClientDate format="time" />
           </p>
         </div>
-        <div className="saas-card px-5 py-3 flex items-center gap-3 border-l-4 border-l-rose-500 rounded-none shadow-xl">
-          <div className="flex -space-x-1">
-             {[1,2,3].map(i => (
-               <div key={i} className={`w-8 h-8 rounded-none border border-white dark:border-zinc-800 bg-slate-900 dark:bg-white text-white dark:text-black flex items-center justify-center text-[10px] font-black shadow-lg`}>
-                 {['A', 'M', 'B'][i-1]}
-               </div>
-             ))}
+        <div className="saas-card px-5 py-3 flex items-center gap-3 border-l-4 border-l-rose-500 rounded-none shadow-xl max-w-full">
+          <div className="w-9 h-9 rounded-none border border-white dark:border-zinc-800 bg-slate-900 dark:bg-white text-white dark:text-black flex items-center justify-center text-[10px] font-black shadow-lg shrink-0">
+            {initials || "GF"}
           </div>
-          <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest">3 Active Nodes</p>
+          <div className="min-w-0">
+            <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest truncate">1 Active Node</p>
+            <p className="text-[10px] font-bold text-rose-500 uppercase tracking-tight truncate">{displayName} / {companyName}</p>
+            <p className="text-[10px] font-bold text-slate-400 tracking-tight truncate">{userEmail}</p>
+          </div>
         </div>
       </div>
 

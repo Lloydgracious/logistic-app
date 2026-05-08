@@ -28,19 +28,18 @@ export default function IncomingPage() {
   const { incomingList, inventorySections, updateIncomingStatus, addIncoming } = useStore();
   const [showAdd, setShowAdd] = useState(false);
 
-  const [newContainerNumber, setNewContainerNumber] = useState("");
   const [newCarNumber, setNewCarNumber] = useState("");
   const [newSupplier, setNewSupplier] = useState("");
   const [newArrivalDate, setNewArrivalDate] = useState("");
   const [newNote, setNewNote] = useState("");
   const defaultSectionId = inventorySections[0]?.id || "";
-  const [items, setItems] = useState([{ name: "", quantity: "", unit: "", inventorySectionId: defaultSectionId, containerNumber: "" }]);
+  const [items, setItems] = useState([{ name: "", quantity: "", unit: "", inventorySectionId: defaultSectionId }]);
 
-  const addItemRow = () => setItems([...items, { name: "", quantity: "", unit: "", inventorySectionId: defaultSectionId, containerNumber: "" }]);
+  const addItemRow = () => setItems([...items, { name: "", quantity: "", unit: "", inventorySectionId: defaultSectionId }]);
   const removeItemRow = (idx: number) => {
     if (items.length > 1) setItems(items.filter((_, i) => i !== idx));
   };
-  const updateItemRow = (idx: number, field: 'name' | 'quantity' | 'unit' | 'inventorySectionId' | 'containerNumber', val: string) => {
+  const updateItemRow = (idx: number, field: 'name' | 'quantity' | 'unit' | 'inventorySectionId', val: string) => {
     const updated = [...items];
     if (field === 'quantity') {
       updated[idx].quantity = val;
@@ -50,17 +49,16 @@ export default function IncomingPage() {
       updated[idx].unit = val;
     } else if (field === 'inventorySectionId') {
       updated[idx].inventorySectionId = val;
-    } else if (field === 'containerNumber') {
-      updated[idx].containerNumber = val;
     }
     setItems(updated);
   };
 
   const handleAdd = () => {
-    if (!newContainerNumber || !newCarNumber || !newSupplier || items.some(i => !i.name || !i.quantity || !i.inventorySectionId)) return;
+    if (!newCarNumber || !newSupplier || items.some(i => !i.name || !i.quantity || !i.inventorySectionId)) return;
+    const generatedContainerNumber = `CNT-${Date.now().toString().slice(-5)}`;
     
     addIncoming({
-      containerNumber: newContainerNumber,
+      containerNumber: generatedContainerNumber,
       carNumber: newCarNumber,
       supplierName: newSupplier,
       items: items.map(i => {
@@ -70,8 +68,8 @@ export default function IncomingPage() {
           name: i.name,
           inventorySectionId: i.inventorySectionId,
           inventorySectionTitle: section?.title,
-          containerNumber: i.containerNumber || newContainerNumber,
-        quantity: parseInt(i.quantity) || 0,
+          containerNumber: generatedContainerNumber,
+          quantity: parseInt(i.quantity) || 0,
           unit: i.unit
         };
       }),
@@ -81,12 +79,11 @@ export default function IncomingPage() {
     });
     
     setShowAdd(false);
-    setNewContainerNumber("");
     setNewCarNumber("");
     setNewSupplier("");
     setNewArrivalDate("");
     setNewNote("");
-    setItems([{ name: "", quantity: "", unit: "", inventorySectionId: defaultSectionId, containerNumber: "" }]);
+    setItems([{ name: "", quantity: "", unit: "", inventorySectionId: defaultSectionId }]);
   };
 
   const handleNextStatus = (id: string, current: IncomingStatus) => {
@@ -119,11 +116,7 @@ export default function IncomingPage() {
           >
              <div className="saas-card p-6 border-2 border-indigo-500/20 bg-indigo-50/10 mb-6 rounded-none">
                <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 italic mb-6">New Shipment Protocol</h3>
-               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                 <div className="space-y-1.5">
-                   <label className="text-[10px] text-slate-500 uppercase font-black px-1 tracking-wider">Container Number</label>
-                   <input value={newContainerNumber} onChange={e=>setNewContainerNumber(e.target.value)} placeholder="CNT-004" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium italic" />
-                 </div>
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                  <div className="space-y-1.5">
                    <label className="text-[10px] text-slate-500 uppercase font-black px-1 tracking-wider">Car Number</label>
                    <input value={newCarNumber} onChange={e=>setNewCarNumber(e.target.value)} placeholder="ABC-123" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium italic" />
@@ -157,7 +150,7 @@ export default function IncomingPage() {
                  </div>
                  <div className="space-y-3">
                     {items.map((it, idx) => (
-                      <div key={idx} className="grid grid-cols-1 lg:grid-cols-[1.25fr_1fr_0.9fr_0.6fr_0.6fr_auto] gap-3 items-start lg:items-center group">
+                      <div key={idx} className="grid grid-cols-1 lg:grid-cols-[1.35fr_1fr_0.6fr_0.6fr_auto] gap-3 items-start lg:items-center group">
                         <input value={it.name} onChange={e=>updateItemRow(idx, 'name', e.target.value)} placeholder="Item Name" className="w-full bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
                         <select
                           value={it.inventorySectionId || defaultSectionId}
@@ -169,7 +162,6 @@ export default function IncomingPage() {
                             <option key={section.id} value={section.id}>{section.title}</option>
                           ))}
                         </select>
-                        <input value={it.containerNumber} onChange={e=>updateItemRow(idx, 'containerNumber', e.target.value)} placeholder="Item Container" className="w-full bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
                         <input value={it.quantity} type="number" onChange={e=>updateItemRow(idx, 'quantity', e.target.value)} placeholder="Qty" className="w-full bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
                         <input value={it.unit} onChange={e=>updateItemRow(idx, 'unit', e.target.value)} placeholder="Unit" className="w-full bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-slate-800 rounded-none px-4 py-2.5 text-slate-800 dark:text-slate-100 text-sm outline-none focus:border-indigo-500 transition-all" />
                         <div className="flex lg:justify-end">

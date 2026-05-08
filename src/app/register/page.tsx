@@ -28,11 +28,55 @@ const markSignupEmailSent = (email: string) => {
   window.localStorage.setItem(getSignupCooldownKey(email), String(Date.now()));
 };
 
+const getEmailRedirectTo = () => {
+  if (typeof window === "undefined") return undefined;
+
+  return `${window.location.origin}/login`;
+};
+
 export default function RegisterPage() {
   const router = useRouter();
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
+  const [pendingConfirmationEmail, setPendingConfirmationEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  const handleResendConfirmation = async () => {
+    const email = pendingConfirmationEmail.trim().toLowerCase();
+    if (!email) return;
+
+    setFormError("");
+    const cooldownSeconds = getRemainingSignupCooldownSeconds(email);
+
+    if (cooldownSeconds > 0) {
+      setNotice(`A confirmation email was just sent. Please wait ${cooldownSeconds} seconds before trying again.`);
+      return;
+    }
+
+    const supabase = createClient();
+    if (!supabase) {
+      setFormError("Add your Supabase URL and publishable key in .env.local first.");
+      return;
+    }
+
+    setIsLoading(true);
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: {
+        emailRedirectTo: getEmailRedirectTo(),
+      },
+    });
+    setIsLoading(false);
+
+    if (error) {
+      setFormError(error.message);
+      return;
+    }
+
+    markSignupEmailSent(email);
+    setNotice("Confirmation email sent again. Check your inbox and spam folder.");
+  };
 
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -65,6 +109,7 @@ export default function RegisterPage() {
       email,
       password,
       options: {
+        emailRedirectTo: getEmailRedirectTo(),
         data: {
           first_name: firstName,
           last_name: lastName,
@@ -89,7 +134,8 @@ export default function RegisterPage() {
 
     if (!data.session) {
       markSignupEmailSent(email);
-      setNotice("Account created. Check your email to confirm your login.");
+      setPendingConfirmationEmail(email);
+      setNotice("Account created. Check your email to confirm your login. If nothing arrives, this email may already have an account, or Supabase email sending may need SMTP settings.");
       return;
     }
 
@@ -198,8 +244,18 @@ export default function RegisterPage() {
             )}
 
             {notice && (
-              <div className="border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-black uppercase tracking-wider text-emerald-600">
-                {notice}
+              <div className="space-y-3 border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-black uppercase tracking-wider text-emerald-600">
+                <p>{notice}</p>
+                {pendingConfirmationEmail && (
+                  <button
+                    type="button"
+                    onClick={handleResendConfirmation}
+                    disabled={isLoading}
+                    className="border border-emerald-300 bg-white px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-700 transition hover:bg-emerald-600 hover:text-white disabled:opacity-60"
+                  >
+                    Resend Confirmation Email
+                  </button>
+                )}
               </div>
             )}
 

@@ -72,9 +72,9 @@ export function Navbar() {
 
           <Link href="/dashboard" className="flex items-center gap-3">
             <span className="bg-white border border-slate-200 px-2 py-1 shadow-sm">
-              <Image src="/kay-thi-logo.png" alt="Kay Thi (Myawady)" width={455} height={205} className="h-9 w-auto max-w-[190px] object-contain" priority />
+              <Image src="/kt-logistic-logo.jpg" alt="KT Logistic & Trading" width={842} height={595} className="h-10 w-auto max-w-[190px] object-contain" priority />
             </span>
-            <span className="hidden xl:block font-black text-[10px] tracking-[0.2em] text-slate-500 dark:text-zinc-400 uppercase">Transport OS</span>
+            <span className="hidden xl:block font-black text-[10px] tracking-[0.2em] text-slate-500 dark:text-zinc-400 uppercase">Logistic OS</span>
           </Link>
 
           <nav className="hidden lg:flex items-center gap-1">
@@ -160,7 +160,7 @@ export function Navbar() {
               <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <Link href="/dashboard" className="flex items-center gap-3">
                   <span className="bg-white border border-slate-200 px-2 py-1 shadow-sm">
-                    <Image src="/kay-thi-logo.png" alt="Kay Thi (Myawady)" width={455} height={205} className="h-9 w-auto max-w-[185px] object-contain" priority />
+                    <Image src="/kt-logistic-logo.jpg" alt="KT Logistic & Trading" width={842} height={595} className="h-10 w-auto max-w-[185px] object-contain" priority />
                   </span>
                 </Link>
                 <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-slate-400 hover:text-rose-500">

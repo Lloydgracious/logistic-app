@@ -35,7 +35,7 @@ export function Sidebar() {
       {/* App Logo/Icon */}
       <div className="relative flex items-center justify-center">
         <div className="w-10 h-10 rounded-2xl bg-white border border-slate-200 flex items-center justify-center overflow-hidden shadow-[0_0_20px_rgba(37,99,235,0.16)]">
-          <Image src="/kay-thi-logo.png" alt="Kay Thi" width={455} height={205} className="h-9 w-auto max-w-none object-contain" />
+          <Image src="/kt-logistic-logo.jpg" alt="KT Logistic & Trading" width={842} height={595} className="h-9 w-auto max-w-none object-contain" />
         </div>
         <AnimatePresence>
           {isHovered && (
@@ -45,7 +45,7 @@ export function Sidebar() {
               exit={{ opacity: 0, x: -10 }}
               className="absolute left-14 whitespace-nowrap font-bold text-xl tracking-tighter text-slate-800 dark:text-white"
             >
-              Kay Thi
+              KT Logistic
             </motion.span>
           )}
         </AnimatePresence>

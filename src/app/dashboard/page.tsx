@@ -74,7 +74,7 @@ export default function Dashboard() {
   const metadata = user?.user_metadata || {};
   const fullName = [metadata.first_name, metadata.last_name].filter(Boolean).join(" ").trim();
   const displayName = fullName || user?.email?.split("@")[0] || "Guest Operator";
-  const companyName = metadata.company || "Kay Thi Transport";
+  const companyName = metadata.company || "KT Logistic & Trading";
   const userEmail = user?.email || "Sign in to sync account";
   const initials = displayName
     .split(/\s+/)

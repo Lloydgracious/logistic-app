@@ -22,7 +22,7 @@ export default function WelcomePage() {
         >
           {/* Logo Brand */}
           <div className="bg-white border border-slate-200 px-4 py-3 shadow-xl mb-12">
-            <Image src="/kay-thi-logo.png" alt="Kay Thi (Myawady)" width={455} height={205} className="h-24 md:h-28 w-auto max-w-full object-contain" priority />
+            <Image src="/kt-logistic-logo.jpg" alt="KT Logistic & Trading" width={842} height={595} className="h-28 md:h-36 w-auto max-w-full object-contain" priority />
           </div>
 
           <h1 className="text-5xl sm:text-7xl md:text-8xl font-black text-slate-900 dark:text-white leading-[0.85] outfit tracking-tighter mb-8 uppercase">
@@ -60,7 +60,7 @@ export default function WelcomePage() {
       </div>
 
       <div className="absolute top-12 left-12 text-[10px] font-black uppercase tracking-[0.5em] text-slate-200 dark:text-zinc-900 hidden md:block">KT_System: Active</div>
-      <div className="absolute bottom-12 right-12 text-[10px] font-black uppercase tracking-[0.5em] text-slate-200 dark:text-zinc-900 hidden md:block">Kay Thi // 2026</div>
+      <div className="absolute bottom-12 right-12 text-[10px] font-black uppercase tracking-[0.5em] text-slate-200 dark:text-zinc-900 hidden md:block">KT Logistic // 2026</div>
     </div>
   );
 }

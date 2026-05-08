@@ -158,10 +158,10 @@ export default function RegisterPage() {
         <div className="saas-card p-8 shadow-lg">
           <div className="text-center mb-8">
             <div className="mx-auto mb-5 inline-flex bg-white border border-slate-200 px-3 py-2 shadow-sm">
-              <Image src="/kay-thi-logo.png" alt="Kay Thi (Myawady)" width={455} height={205} className="h-20 w-auto object-contain" priority />
+              <Image src="/kt-logistic-logo.jpg" alt="KT Logistic & Trading" width={842} height={595} className="h-24 w-auto object-contain" priority />
             </div>
             <h1 className="text-2xl font-black text-slate-900 outfit tracking-tight">Create an Account</h1>
-            <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm mt-1 font-medium">Join Kay Thi Transport and organize your fleet.</p>
+            <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm mt-1 font-medium">Join KT Logistic & Trading and organize your fleet.</p>
           </div>
 
           <form onSubmit={handleRegister} className="space-y-4">

@@ -115,7 +115,7 @@ export default function InvoicePage() {
           <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tighter outfit uppercase italic">
             Billing <span className="text-cyan-500">Office</span>
           </h2>
-          <p className="text-[10px] font-black text-slate-400 dark:text-zinc-600 uppercase tracking-[0.2em] mt-2">Kay Thi invoice generation and transport billing.</p>
+          <p className="text-[10px] font-black text-slate-400 dark:text-zinc-600 uppercase tracking-[0.2em] mt-2">KT Logistic invoice generation and transport billing.</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -232,7 +232,7 @@ export default function InvoicePage() {
                  <FileText className="w-5 h-5" />
                  <p className="text-[10px] font-black uppercase tracking-widest">Legal Notice</p>
               </div>
-              <p className="text-[10px] leading-relaxed font-bold">Invoices are generated for Kay Thi (Myawady) Trading Company Limited export, import, and transportation records.</p>
+              <p className="text-[10px] leading-relaxed font-bold">Invoices are generated for KT Logistic & Trading export, import, and transportation records.</p>
            </div>
         </div>
 
@@ -254,13 +254,13 @@ export default function InvoicePage() {
                     <div className="flex flex-col md:flex-row justify-between items-start gap-8 mb-16 border-b-4 border-slate-950 dark:border-white pb-10">
                        <div className="max-w-xl">
                           <div className="bg-white border border-slate-200 p-3 inline-flex mb-6">
-                            <Image src="/kay-thi-logo.png" alt="Kay Thi (Myawady) Trading Company Limited" width={455} height={205} className="h-28 w-auto object-contain" priority />
+                            <Image src="/kt-logistic-logo.jpg" alt="KT Logistic & Trading" width={842} height={595} className="h-32 w-auto object-contain" priority />
                           </div>
                           <h1 className="text-3xl md:text-4xl font-black outfit tracking-tighter text-slate-950 dark:text-white uppercase leading-none">
-                            Kay Thi <span className="text-cyan-500 italic">(Myawady)</span>
+                            KT Logistic <span className="text-cyan-500 italic">& Trading</span>
                           </h1>
                           <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 mt-3">
-                            Export / Import & Transportation
+                            Kay Thi (Myawady) Trading Company Limited
                           </p>
                           <div className="mt-5 space-y-1">
                             {companyDetails.map((detail) => (

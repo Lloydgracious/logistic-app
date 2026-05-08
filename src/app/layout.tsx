@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
 
 export const metadata: Metadata = {
-  title: "Kay Thi Transport - Logistics & Inventory",
+  title: "KT Logistic & Trading - Logistics & Inventory",
   description: "Export, import, transportation, order tracking, and inventory management system.",
 };
 

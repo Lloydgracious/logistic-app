@@ -85,5 +85,5 @@ export function canAccessModule(role: AppRole | undefined, enabledModules: Modul
 
 export function getDefaultLanding(role: AppRole | undefined, enabledModules: ModuleKey[]) {
   if (role === "admin") return "/dashboard";
-  return getAllowedModules(role, enabledModules)[0]?.href || "/profile";
+  return getAllowedModules(role, enabledModules)[0]?.href || "/workspace";
 }

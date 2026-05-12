@@ -8,7 +8,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
-import { ADMIN_MODULE, getAllowedModules, type ModuleKey } from "@/lib/access-control";
+import { ADMIN_MODULE, getAllowedModules, getDefaultLanding, type ModuleKey } from "@/lib/access-control";
 import { getCurrentAccount, type CurrentAccount } from "@/lib/supabase/admin";
 
 export function Navbar() {
@@ -80,6 +80,7 @@ export function Navbar() {
   const navigationLinks = profile ? getAllowedModules(profile.role, enabledModules) : [];
   const adminLink = profile?.role === "admin" ? ADMIN_MODULE : null;
   const canOpenNotifications = profile?.role === "admin" || enabledModules.includes("notifications");
+  const homeHref = profile ? getDefaultLanding(profile.role, enabledModules) : "/dashboard";
 
   return (
     <>
@@ -94,7 +95,7 @@ export function Navbar() {
             {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
 
-          <Link href="/dashboard" className="flex items-center gap-3">
+          <Link href={homeHref} className="flex items-center gap-3">
             <span className="flex items-center">
               <Image src="/kt-logistic-logo.jpg" alt="KT Logistic & Trading" width={842} height={595} className="h-11 w-auto max-w-[190px] object-contain" priority />
             </span>
@@ -189,7 +190,7 @@ export function Navbar() {
               className="fixed top-0 left-0 bottom-0 w-[280px] bg-white dark:bg-black border-r border-slate-200 dark:border-slate-800 z-[70] lg:hidden flex flex-col"
             >
               <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <Link href="/dashboard" className="flex items-center gap-3">
+                <Link href={homeHref} className="flex items-center gap-3">
                   <span className="flex items-center">
                     <Image src="/kt-logistic-logo.jpg" alt="KT Logistic & Trading" width={842} height={595} className="h-11 w-auto max-w-[185px] object-contain" priority />
                   </span>

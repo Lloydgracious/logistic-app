@@ -3,28 +3,51 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Truck, ShoppingCart, Package, ScrollText, Users, Receipt } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
-
-const links = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Incoming", href: "/incoming", icon: Truck },
-  { name: "Orders", href: "/orders", icon: ShoppingCart },
-  { name: "Customers", href: "/customers", icon: Users },
-  { name: "Inventory", href: "/inventory", icon: Package },
-  { name: "Logs", href: "/logs", icon: ScrollText },
-  { name: "Billing", href: "/invoices", icon: Receipt },
-];
+import { useEffect, useState } from "react";
+import { ADMIN_MODULE, getAllowedModules, type ModuleKey } from "@/lib/access-control";
+import { getCurrentAccount, type CurrentAccount } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/client";
 
 export function Sidebar() {
   const pathname = usePathname();
   const [isHovered, setIsHovered] = useState(false);
+  const [account, setAccount] = useState<CurrentAccount | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadAccount = async () => {
+      const nextAccount = await getCurrentAccount();
+      if (isMounted) setAccount(nextAccount);
+    };
+
+    void loadAccount();
+
+    const supabase = createClient();
+    if (!supabase) return () => {
+      isMounted = false;
+    };
+
+    const { data } = supabase.auth.onAuthStateChange(() => {
+      void loadAccount();
+    });
+
+    return () => {
+      isMounted = false;
+      data.subscription.unsubscribe();
+    };
+  }, [pathname]);
 
   if (['/', '/login', '/register'].includes(pathname)) {
     return null;
   }
+
+  const profile = account?.status === "ready" || account?.status === "disabled" ? account.profile : null;
+  const enabledModules: ModuleKey[] = account?.status === "ready" || account?.status === "disabled" ? account.enabledModules : [];
+  const moduleLinks = profile ? getAllowedModules(profile.role, enabledModules) : [];
+  const links = profile?.role === "admin" ? [...moduleLinks, ADMIN_MODULE] : moduleLinks;
 
   return (
     <motion.aside 
@@ -63,7 +86,7 @@ export function Sidebar() {
           
           return (
             <Link
-              key={link.name}
+              key={link.label}
               href={link.href}
               className={cn(
                 "flex items-center gap-4 px-3 py-3.5 rounded-[1.5rem] transition-all duration-300 relative group/item",
@@ -96,7 +119,7 @@ export function Sidebar() {
                     exit={{ opacity: 0, x: -10 }}
                     className="relative z-10 whitespace-nowrap font-bold text-sm tracking-tight"
                   >
-                    {link.name}
+                    {link.label}
                   </motion.span>
                 )}
               </AnimatePresence>

@@ -148,7 +148,7 @@ export default function AdminPage() {
 
     setAccountForm(emptyAccountForm);
     setSelectedModules([]);
-    setNotice(`Account created for ${accountForm.email.trim().toLowerCase()}.`);
+    setNotice(`Account created or repaired for ${accountForm.email.trim().toLowerCase()}.`);
     await loadAdminData();
   };
 
@@ -298,7 +298,7 @@ export default function AdminPage() {
         <div className="space-y-6">
           <section className="saas-card p-6 rounded-none border-t-4 border-t-cyan-500">
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">Create Account</h2>
+              <h2 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">Create / Repair Account</h2>
               <UserPlus className="h-5 w-5 text-cyan-600" />
             </div>
             <div className="space-y-3">
@@ -367,7 +367,7 @@ export default function AdminPage() {
                 disabled={isCreatingAccount}
                 className="w-full bg-slate-950 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-cyan-600 dark:bg-white dark:text-black dark:hover:bg-cyan-500 dark:hover:text-white"
               >
-                {isCreatingAccount ? "Creating..." : "Create Account"}
+                {isCreatingAccount ? "Saving..." : "Create / Repair Account"}
               </button>
             </div>
           </section>

@@ -61,6 +61,9 @@ export async function POST(request: NextRequest) {
     email_confirm: true,
     user_metadata: {
       full_name: fullName,
+      app_created: true,
+      app_role: role,
+      enabled_modules: enabledModules,
     },
   });
 
@@ -75,6 +78,12 @@ export async function POST(request: NextRequest) {
     const { error: passwordError } = await supabase.auth.admin.updateUserById(existingUserId, {
       password,
       email_confirm: true,
+      user_metadata: {
+        full_name: fullName,
+        app_created: true,
+        app_role: role,
+        enabled_modules: enabledModules,
+      },
     });
 
     if (passwordError) {
@@ -94,6 +103,8 @@ export async function POST(request: NextRequest) {
     if (!existingUserId) await supabase.auth.admin.deleteUser(userId);
     return NextResponse.json({ message: profileError.message }, { status: 400 });
   }
+
+  await supabase.from("user_module_access").delete().eq("user_id", userId);
 
   if (role === "staff" && enabledModules.length > 0) {
     const { error: moduleError } = await supabase.from("user_module_access").upsert(
@@ -118,5 +129,5 @@ export async function POST(request: NextRequest) {
     details: { email, role, enabledModules } as Json,
   });
 
-  return NextResponse.json({ userId });
+  return NextResponse.json({ userId, repaired: Boolean(existingUserId) });
 }

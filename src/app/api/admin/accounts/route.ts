@@ -91,6 +91,16 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const { data: emailProfile } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle();
+
+  if (emailProfile?.id && emailProfile.id !== userId) {
+    await supabase.from("profiles").delete().eq("id", emailProfile.id);
+  }
+
   const { error: profileError } = await supabase.from("profiles").upsert({
     id: userId,
     email,

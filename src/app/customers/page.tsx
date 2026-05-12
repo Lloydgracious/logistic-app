@@ -2,17 +2,20 @@
 
 import { useStore } from "@/lib/store";
 import { motion } from "framer-motion";
-import { ArrowRight, MapPin, Phone, Plus, StickyNote, UserPlus, Users } from "lucide-react";
+import { ArrowRight, MapPin, Phone, Plus, StickyNote, UserPlus, Users, Pencil, Trash } from "lucide-react";
 import { FormEvent, useState } from "react";
+import { useAdminAccess } from "@/lib/use-admin-access";
 
 const formatDate = (value: string) => new Date(value).toISOString().slice(0, 10);
 
 export default function CustomersPage() {
-  const { customers, orders, addCustomer } = useStore();
+  const { customers, orders, addCustomer, updateCustomer, deleteCustomer } = useStore();
+  const isAdmin = useAdminAccess();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [note, setNote] = useState("");
+  const [editingCustomerId, setEditingCustomerId] = useState<string | null>(null);
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -23,7 +26,10 @@ export default function CustomersPage() {
     setFormError("");
     setNotice("");
 
-    const result = addCustomer({ name, phone, address, note });
+    const wasEditing = Boolean(editingCustomerId);
+    const result = editingCustomerId
+      ? updateCustomer(editingCustomerId, { name, phone, address, note })
+      : addCustomer({ name, phone, address, note });
     if (!result.ok) {
       setFormError(result.message || "Could not create customer.");
       return;
@@ -33,7 +39,30 @@ export default function CustomersPage() {
     setPhone("");
     setAddress("");
     setNote("");
-    setNotice(`${result.customer?.name || "Customer"} is available for new orders.`);
+    setEditingCustomerId(null);
+    setNotice(wasEditing ? `${name.trim()} was updated.` : `${name.trim() || "Customer"} is available for new orders.`);
+  };
+
+  const handleEditCustomer = (id: string) => {
+    const customer = customers.find((item) => item.id === id);
+    if (!customer) return;
+
+    setEditingCustomerId(id);
+    setName(customer.name);
+    setPhone(customer.phone || "");
+    setAddress(customer.address || "");
+    setNote(customer.note || "");
+    setFormError("");
+    setNotice("");
+  };
+
+  const handleDeleteCustomer = (id: string) => {
+    const customer = customers.find((item) => item.id === id);
+    if (!customer) return;
+    if (window.confirm(`Delete customer ${customer.name}? Existing orders will keep the customer name.`)) {
+      deleteCustomer(id);
+      setNotice(`${customer.name} was deleted.`);
+    }
   };
 
   return (
@@ -52,7 +81,7 @@ export default function CustomersPage() {
       <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-6">
         <form onSubmit={handleSubmit} className="saas-card p-6 rounded-none border border-rose-500/20 bg-rose-50/30 dark:bg-rose-950/5 h-max">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 italic">New Customer</h3>
+            <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 italic">{editingCustomerId ? "Edit Customer" : "New Customer"}</h3>
             <UserPlus className="w-5 h-5 text-rose-500" />
           </div>
 
@@ -90,9 +119,22 @@ export default function CustomersPage() {
             </div>
           )}
 
-          <button type="submit" className="mt-6 w-full px-6 py-3 rounded-none bg-slate-950 dark:bg-white text-white dark:text-black hover:bg-rose-600 dark:hover:bg-rose-500 hover:text-white transition-all shadow-lg font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2">
-            Add Customer <ArrowRight className="w-4 h-4" />
-          </button>
+          <div className="mt-6 flex gap-3">
+            {editingCustomerId && (
+              <button type="button" onClick={() => {
+                setEditingCustomerId(null);
+                setName("");
+                setPhone("");
+                setAddress("");
+                setNote("");
+              }} className="px-4 py-3 rounded-none border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all font-bold text-xs uppercase tracking-widest">
+                Cancel
+              </button>
+            )}
+            <button type="submit" className="flex-1 px-6 py-3 rounded-none bg-slate-950 dark:bg-white text-white dark:text-black hover:bg-rose-600 dark:hover:bg-rose-500 hover:text-white transition-all shadow-lg font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2">
+              {editingCustomerId ? "Save Customer" : "Add Customer"} <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
         </form>
 
         <div className="space-y-4">
@@ -129,9 +171,21 @@ export default function CustomersPage() {
                             <h4 className="text-lg font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight outfit">{customer.name}</h4>
                             <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Created {formatDate(customer.createdAt)}</p>
                           </div>
-                          <span className="shrink-0 border border-cyan-200 bg-cyan-50 text-cyan-700 px-2 py-1 text-[10px] font-black uppercase tracking-widest">
-                            {orderCount} Orders
-                          </span>
+                          <div className="shrink-0 flex items-center gap-2">
+                            <span className="border border-cyan-200 bg-cyan-50 text-cyan-700 px-2 py-1 text-[10px] font-black uppercase tracking-widest">
+                              {orderCount} Orders
+                            </span>
+                            {isAdmin && (
+                              <>
+                                <button onClick={() => handleEditCustomer(customer.id)} className="p-2 border border-slate-200 text-slate-500 hover:border-cyan-300 hover:text-cyan-600 transition-colors" aria-label="Edit customer" title="Edit customer">
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => handleDeleteCustomer(customer.id)} className="p-2 border border-slate-200 text-slate-500 hover:border-rose-300 hover:text-rose-600 transition-colors" aria-label="Delete customer" title="Delete customer">
+                                  <Trash className="w-3.5 h-3.5" />
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
 
                         <div className="mt-4 space-y-2 text-xs font-bold text-slate-500 dark:text-slate-400">

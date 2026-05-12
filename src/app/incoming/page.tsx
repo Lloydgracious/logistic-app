@@ -2,10 +2,11 @@
 
 import { useStore, IncomingStatus } from "@/lib/store";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, ArrowRight, Truck, Trash } from "lucide-react";
+import { Plus, ArrowRight, Truck, Trash, Pencil } from "lucide-react";
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import { getWaitingDays } from "@/lib/utils";
+import { useAdminAccess } from "@/lib/use-admin-access";
 
 const AnimatedCar = dynamic(() => import("@/components/AnimatedCar").then(mod => mod.AnimatedCar), { ssr: false });
 
@@ -25,13 +26,15 @@ function StatusBadge({ status }: { status: IncomingStatus }) {
 }
 
 export default function IncomingPage() {
-  const { incomingList, inventorySections, updateIncomingStatus, addIncoming } = useStore();
+  const { incomingList, inventorySections, updateIncomingStatus, addIncoming, updateIncoming, deleteIncoming } = useStore();
+  const isAdmin = useAdminAccess();
   const [showAdd, setShowAdd] = useState(false);
 
   const [newCarNumber, setNewCarNumber] = useState("");
   const [newSupplier, setNewSupplier] = useState("");
   const [newArrivalDate, setNewArrivalDate] = useState("");
   const [newNote, setNewNote] = useState("");
+  const [editingIncomingId, setEditingIncomingId] = useState<string | null>(null);
   const defaultSectionId = inventorySections[0]?.id || "";
   const [items, setItems] = useState([{ name: "", containerNumber: "", quantity: "", unit: "", inventorySectionId: defaultSectionId }]);
 
@@ -59,7 +62,7 @@ export default function IncomingPage() {
     if (!newCarNumber || !newSupplier || items.some(i => !i.name || !i.containerNumber || !i.quantity || !i.inventorySectionId)) return;
     const firstContainerNumber = items[0]?.containerNumber.trim() || `CNT-${Date.now().toString().slice(-5)}`;
     
-    addIncoming({
+    const shipment = {
       containerNumber: firstContainerNumber,
       carNumber: newCarNumber,
       supplierName: newSupplier,
@@ -78,9 +81,21 @@ export default function IncomingPage() {
       arrivalTime: newArrivalDate ? new Date(newArrivalDate).toISOString() : undefined,
       durationHours: 24,
       note: newNote
-    });
+    };
+
+    if (editingIncomingId) {
+      const existing = incomingList.find((incoming) => incoming.id === editingIncomingId);
+      updateIncoming(editingIncomingId, {
+        ...shipment,
+        arrivalTime: shipment.arrivalTime || existing?.arrivalTime || new Date().toISOString(),
+        durationHours: existing?.durationHours || 24,
+      });
+    } else {
+      addIncoming(shipment);
+    }
     
     setShowAdd(false);
+    setEditingIncomingId(null);
     setNewCarNumber("");
     setNewSupplier("");
     setNewArrivalDate("");
@@ -93,6 +108,33 @@ export default function IncomingPage() {
     else if (current === 'AT_BRIDGE') updateIncomingStatus(id, 'IN_GARAGE');
   };
 
+  const handleEditIncoming = (id: string) => {
+    const incoming = incomingList.find((item) => item.id === id);
+    if (!incoming) return;
+
+    setEditingIncomingId(id);
+    setShowAdd(true);
+    setNewCarNumber(incoming.carNumber);
+    setNewSupplier(incoming.supplierName);
+    setNewArrivalDate(new Date(incoming.arrivalTime).toISOString().slice(0, 10));
+    setNewNote(incoming.note || "");
+    setItems(incoming.items.map((item) => ({
+      name: item.name,
+      containerNumber: item.containerNumber || incoming.containerNumber,
+      quantity: String(item.quantity),
+      unit: item.unit || "",
+      inventorySectionId: item.inventorySectionId || defaultSectionId,
+    })));
+  };
+
+  const handleDeleteIncoming = (id: string) => {
+    const incoming = incomingList.find((item) => item.id === id);
+    if (!incoming) return;
+    if (window.confirm(`Delete incoming shipment ${incoming.containerNumber}? This also removes stock created from this shipment.`)) {
+      deleteIncoming(id);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-20 animate-in fade-in slide-in-from-bottom-8 duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -101,7 +143,19 @@ export default function IncomingPage() {
            <p className="text-[10px] font-black text-slate-400 dark:text-zinc-600 uppercase tracking-[0.2em] mt-1">Live shipment tracking & arrival manifesting.</p>
         </div>
         <button 
-          onClick={() => setShowAdd(!showAdd)}
+          onClick={() => {
+            if (showAdd) {
+              setShowAdd(false);
+              setEditingIncomingId(null);
+              setNewCarNumber("");
+              setNewSupplier("");
+              setNewArrivalDate("");
+              setNewNote("");
+              setItems([{ name: "", containerNumber: "", quantity: "", unit: "", inventorySectionId: defaultSectionId }]);
+              return;
+            }
+            setShowAdd(true);
+          }}
           className="flex items-center gap-2 bg-slate-950 dark:bg-white text-white dark:text-black px-6 py-3 rounded-none font-black text-xs uppercase tracking-widest transition-all shadow-xl hover:bg-rose-600 dark:hover:bg-rose-500 hover:text-white"
         >
           <Plus className={`w-4 h-4 transition-transform ${showAdd ? 'rotate-45' : ''}`} /> {showAdd ? 'Close' : 'Add Shipment'}
@@ -117,7 +171,7 @@ export default function IncomingPage() {
             className="overflow-hidden"
           >
              <div className="saas-card p-6 border-2 border-indigo-500/20 bg-indigo-50/10 mb-6 rounded-none">
-               <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 italic mb-6">New Shipment Protocol</h3>
+               <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 italic mb-6">{editingIncomingId ? "Edit Shipment Protocol" : "New Shipment Protocol"}</h3>
                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                  <div className="space-y-1.5">
                    <label className="text-[10px] text-slate-500 uppercase font-black px-1 tracking-wider">Car Number</label>
@@ -193,8 +247,16 @@ export default function IncomingPage() {
                </div>
 
                <div className="flex justify-end gap-3 pt-2">
-                 <button onClick={() => setShowAdd(false)} className="px-6 py-3 rounded-none text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-900 transition-all font-bold text-xs uppercase tracking-widest">Cancel</button>
-                 <button onClick={handleAdd} className="px-8 py-3 rounded-none bg-slate-950 dark:bg-white text-white dark:text-black hover:bg-rose-600 dark:hover:bg-rose-500 hover:text-white transition-all shadow-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2">Save Shipment <ArrowRight className="w-4 h-4" /></button>
+                 <button onClick={() => {
+                  setShowAdd(false);
+                  setEditingIncomingId(null);
+                  setNewCarNumber("");
+                  setNewSupplier("");
+                  setNewArrivalDate("");
+                  setNewNote("");
+                  setItems([{ name: "", containerNumber: "", quantity: "", unit: "", inventorySectionId: defaultSectionId }]);
+                }} className="px-6 py-3 rounded-none text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-900 transition-all font-bold text-xs uppercase tracking-widest">Cancel</button>
+                 <button onClick={handleAdd} className="px-8 py-3 rounded-none bg-slate-950 dark:bg-white text-white dark:text-black hover:bg-rose-600 dark:hover:bg-rose-500 hover:text-white transition-all shadow-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2">{editingIncomingId ? "Save Shipment" : "Create Shipment"} <ArrowRight className="w-4 h-4" /></button>
                </div>
              </div>
           </motion.div>
@@ -233,6 +295,16 @@ export default function IncomingPage() {
                   </div>
                   <div className="ml-auto flex flex-col items-end gap-2">
                     <StatusBadge status={item.status} />
+                    {isAdmin && (
+                      <div className="flex gap-2">
+                        <button onClick={() => handleEditIncoming(item.id)} className="p-2 border border-slate-200 text-slate-500 hover:border-cyan-300 hover:text-cyan-600 transition-colors" aria-label="Edit incoming" title="Edit incoming">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => handleDeleteIncoming(item.id)} className="p-2 border border-slate-200 text-slate-500 hover:border-rose-300 hover:text-rose-600 transition-colors" aria-label="Delete incoming" title="Delete incoming">
+                          <Trash className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 

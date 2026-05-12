@@ -100,11 +100,6 @@ export default function RegisterPage() {
     const password = String(formData.get("password") || "");
     const cooldownSeconds = getRemainingSignupCooldownSeconds(email);
 
-    if (!inviteToken) {
-      setFormError("Staff registration is invite-only. Ask an admin for an invite link.");
-      return;
-    }
-
     if (cooldownSeconds > 0) {
       setNotice(`A confirmation email was just sent. Please wait ${cooldownSeconds} seconds before trying again.`);
       return;
@@ -156,7 +151,7 @@ export default function RegisterPage() {
 
     const account = await getCurrentAccount();
     if (account.status !== "ready") {
-      setFormError("Account created, but this email does not match an active invite yet.");
+      setFormError("Account created, but the profile could not be activated yet. Please sign in again or ask an admin to check access.");
       return;
     }
 
@@ -180,15 +175,9 @@ export default function RegisterPage() {
             <div className="mx-auto mb-5 inline-flex bg-white border border-slate-200 px-3 py-2 shadow-sm">
               <Image src="/kt-logistic-logo.jpg" alt="KT Logistic & Trading" width={842} height={595} className="h-24 w-auto object-contain" priority />
             </div>
-            <h1 className="text-2xl font-black text-slate-900 outfit tracking-tight">Accept Staff Invite</h1>
-            <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm mt-1 font-medium">Create your KT Logistic account from an admin invite.</p>
+            <h1 className="text-2xl font-black text-slate-900 outfit tracking-tight">Create Account</h1>
+            <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm mt-1 font-medium">Create your KT Logistic account. Admins can turn page access on or off after signup.</p>
           </div>
-
-          {!inviteToken && (
-            <div className="mb-5 border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-black uppercase tracking-wider text-amber-700">
-              Staff registration is invite-only. Use the invite link shared by an admin.
-            </div>
-          )}
 
           <form onSubmit={handleRegister} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -289,7 +278,7 @@ export default function RegisterPage() {
               </div>
             )}
 
-            <button type="submit" disabled={isLoading || !inviteToken} className="w-full py-3 bg-primary text-white font-bold rounded-lg shadow-md hover:shadow-lg hover:bg-primaryHover transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-60">
+            <button type="submit" disabled={isLoading} className="w-full py-3 bg-primary text-white font-bold rounded-lg shadow-md hover:shadow-lg hover:bg-primaryHover transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-60">
               {isLoading ? "Creating..." : "Create Account"} <ArrowRight className="w-4 h-4" />
             </button>
           </form>

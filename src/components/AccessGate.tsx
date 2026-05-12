@@ -10,6 +10,7 @@ import {
   getDefaultLanding,
   getModuleForPath,
 } from "@/lib/access-control";
+import { AccountProvider } from "@/lib/account-context";
 import { getCurrentAccount, type CurrentAccount } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/client";
 
@@ -73,9 +74,6 @@ export function AccessGate({ children }: { children: React.ReactNode }) {
     if (!account) return;
 
     if (isPublicPath) {
-      if (account.status === "ready" && pathname === "/login") {
-        router.replace(getDefaultLanding(account.profile.role, account.enabledModules));
-      }
       return;
     }
 
@@ -92,14 +90,14 @@ export function AccessGate({ children }: { children: React.ReactNode }) {
     }
   }, [account, isPublicPath, pathname, router]);
 
-  if (isPublicPath) return <>{children}</>;
+  if (isPublicPath) return <AccountProvider value={account}>{children}</AccountProvider>;
   if (!account) return <GateLoading />;
   if (account.status === "signed_out") return <GateLoading />;
   if (account.status === "disabled") {
     return <GateMessage title="Account Disabled" message="This account is disabled. Ask an admin to reactivate access." />;
   }
   if (account.status === "pending") {
-    return <GateMessage title="Account Pending" message="This login is not connected to an active staff invite yet." />;
+    return <GateMessage title="Account Pending" message="This login is not connected to an active account yet. Please ask an admin to check access." />;
   }
 
   const moduleKey = getModuleForPath(pathname);
@@ -107,5 +105,5 @@ export function AccessGate({ children }: { children: React.ReactNode }) {
     return <GateLoading />;
   }
 
-  return <>{children}</>;
+  return <AccountProvider value={account}>{children}</AccountProvider>;
 }

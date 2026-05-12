@@ -6,7 +6,8 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { getWaitingDays } from "@/lib/utils";
-import { Plus, ArrowRight, ShoppingCart, CheckCircle2, Trash } from "lucide-react";
+import { Plus, ArrowRight, ShoppingCart, CheckCircle2, Trash, Pencil } from "lucide-react";
+import { useAdminAccess } from "@/lib/use-admin-access";
 
 const AnimatedCar = dynamic(() => import("@/components/AnimatedCar").then(mod => mod.AnimatedCar), { ssr: false });
 
@@ -32,7 +33,8 @@ function StatusBadge({ status }: { status: OrderStatus }) {
 }
 
 export default function OrdersPage() {
-  const { orders, customers, updateOrderStatus, addOrder, containerStock } = useStore();
+  const { orders, customers, updateOrderStatus, addOrder, containerStock, updateOrder, deleteOrder } = useStore();
+  const isAdmin = useAdminAccess();
   const [showAdd, setShowAdd] = useState(false);
 
   const [customerName, setCustomerName] = useState("");
@@ -42,8 +44,13 @@ export default function OrdersPage() {
   const [customerNote, setCustomerNote] = useState("");
   const [items, setItems] = useState<OrderDraftItem[]>([{ stockId: "", quantity: "" }]);
   const [formError, setFormError] = useState("");
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
 
-  const availableStock = containerStock.filter((row) => row.remainingQuantity > 0);
+  const editingOrder = orders.find((order) => order.id === editingOrderId);
+  const availableStock = containerStock.filter((row) =>
+    row.remainingQuantity > 0 ||
+    Boolean(editingOrder?.items.some((item) => item.containerId === row.id))
+  );
   const existingCustomers = [...customers].sort((a, b) => a.name.localeCompare(b.name));
 
   const addItemRow = () => setItems([...items, { stockId: "", quantity: "" }]);
@@ -77,21 +84,26 @@ export default function OrdersPage() {
       };
     });
     
-    const result = addOrder({
+    const orderPayload = {
       customerName: trimmedCustomerName,
       carNumber: trimmedCarNumber,
       items: orderItems,
-      orderTime: orderDate ? new Date(orderDate).toISOString() : undefined,
-      finalDate: finalOrderDate ? new Date(finalOrderDate).toISOString() : undefined,
+      orderTime: orderDate ? new Date(orderDate).toISOString() : new Date().toISOString(),
+      finalDate: finalOrderDate ? new Date(finalOrderDate).toISOString() : new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
       customerNote
-    });
+    };
+
+    const result = editingOrderId
+      ? updateOrder(editingOrderId, orderPayload)
+      : addOrder(orderPayload);
 
     if (!result.ok) {
-      setFormError(result.message || "Could not create order.");
+      setFormError(result.message || "Could not save order.");
       return;
     }
     
     setShowAdd(false);
+    setEditingOrderId(null);
     setCustomerName("");
     setCarNumber("");
     setOrderDate("");
@@ -107,6 +119,32 @@ export default function OrdersPage() {
     else if (current === 'ON_THE_WAY') updateOrderStatus(id, 'DELIVERED');
   };
 
+  const handleEditOrder = (id: string) => {
+    const order = orders.find((item) => item.id === id);
+    if (!order) return;
+
+    setEditingOrderId(id);
+    setShowAdd(true);
+    setCustomerName(order.customerName);
+    setCarNumber(order.carNumber);
+    setOrderDate(new Date(order.orderTime).toISOString().slice(0, 10));
+    setFinalOrderDate(new Date(order.finalDate).toISOString().slice(0, 10));
+    setCustomerNote(order.customerNote || "");
+    setItems(order.items.map((item) => ({
+      stockId: item.containerId || "",
+      quantity: String(item.quantity),
+    })));
+    setFormError("");
+  };
+
+  const handleDeleteOrder = (id: string) => {
+    const order = orders.find((item) => item.id === id);
+    if (!order) return;
+    if (window.confirm(`Delete order for ${order.customerName}? Stock used by this order will be returned.`)) {
+      deleteOrder(id);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-20 animate-in fade-in slide-in-from-bottom-8 duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -115,7 +153,21 @@ export default function OrdersPage() {
            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 dark:text-slate-500 mt-1">Manage, add, and track outgoing deliveries.</p>
         </div>
         <button 
-          onClick={() => setShowAdd(!showAdd)}
+          onClick={() => {
+            if (showAdd) {
+              setShowAdd(false);
+              setEditingOrderId(null);
+              setCustomerName("");
+              setCarNumber("");
+              setOrderDate("");
+              setFinalOrderDate("");
+              setCustomerNote("");
+              setItems([{ stockId: "", quantity: "" }]);
+              setFormError("");
+              return;
+            }
+            setShowAdd(true);
+          }}
           className="flex items-center gap-2 bg-primary hover:bg-primaryHover text-white px-5 py-2.5 rounded-lg font-bold transition-all shadow-sm max-w-max"
         >
           <Plus className={`w-5 h-5 transition-transform ${showAdd ? 'rotate-45' : ''}`} /> {showAdd ? 'Close' : 'New Order'}
@@ -132,7 +184,7 @@ export default function OrdersPage() {
           >
             <div className="saas-card p-6 border border-primary/20 bg-blue-50/50 mb-6 rounded-none">
                <div className="flex justify-between items-center mb-6">
-                 <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 italic">Create New Order</h3>
+                 <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 italic">{editingOrderId ? "Edit Order" : "Create New Order"}</h3>
                  <span className="text-[10px] bg-rose-500 text-white px-2 py-1 rounded-none font-black uppercase tracking-widest shadow-lg shadow-rose-500/20">Customer Direct</span>
                </div>
                
@@ -216,8 +268,18 @@ export default function OrdersPage() {
                )}
 
                <div className="flex justify-end gap-3">
-                 <button onClick={() => setShowAdd(false)} className="px-6 py-3 rounded-none text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-900 transition-all font-bold text-xs uppercase tracking-widest">Cancel</button>
-                 <button onClick={handleAdd} className="px-8 py-3 rounded-none bg-slate-950 dark:bg-white text-white dark:text-black hover:bg-rose-600 dark:hover:bg-rose-500 hover:text-white transition-all shadow-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2">Submit Order <ArrowRight className="w-4 h-4" /></button>
+                 <button onClick={() => {
+                  setShowAdd(false);
+                  setEditingOrderId(null);
+                  setCustomerName("");
+                  setCarNumber("");
+                  setOrderDate("");
+                  setFinalOrderDate("");
+                  setCustomerNote("");
+                  setItems([{ stockId: "", quantity: "" }]);
+                  setFormError("");
+                }} className="px-6 py-3 rounded-none text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-900 transition-all font-bold text-xs uppercase tracking-widest">Cancel</button>
+                 <button onClick={handleAdd} className="px-8 py-3 rounded-none bg-slate-950 dark:bg-white text-white dark:text-black hover:bg-rose-600 dark:hover:bg-rose-500 hover:text-white transition-all shadow-lg font-bold text-xs uppercase tracking-widest flex items-center gap-2">{editingOrderId ? "Save Order" : "Submit Order"} <ArrowRight className="w-4 h-4" /></button>
                </div>
              </div>
           </motion.div>
@@ -251,6 +313,16 @@ export default function OrdersPage() {
                   </div>
                   <div className="ml-auto flex flex-col items-end gap-2">
                     <StatusBadge status={order.status} />
+                    {isAdmin && (
+                      <div className="flex gap-2">
+                        <button onClick={() => handleEditOrder(order.id)} className="p-2 border border-slate-200 text-slate-500 hover:border-cyan-300 hover:text-cyan-600 transition-colors" aria-label="Edit order" title="Edit order">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => handleDeleteOrder(order.id)} className="p-2 border border-slate-200 text-slate-500 hover:border-rose-300 hover:text-rose-600 transition-colors" aria-label="Delete order" title="Delete order">
+                          <Trash className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 

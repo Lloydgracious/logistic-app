@@ -47,7 +47,7 @@ export default function LoginPage() {
       return;
     }
     if (account.status === "pending" || account.status === "signed_out") {
-      setFormError("This login is not connected to an active staff invite yet.");
+      setFormError("This login is not connected to an active account yet. Please register first or ask an admin to check access.");
       return;
     }
 
@@ -121,7 +121,7 @@ export default function LoginPage() {
           </form>
 
           <p className="text-center mt-8 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 font-medium">
-            New staff accounts are invite-only. Ask an admin for your registration link.
+            Need an account? <Link href="/register" className="font-bold text-primary hover:text-primaryHover transition-colors">Create one here</Link>.
           </p>
         </div>
       </motion.div>

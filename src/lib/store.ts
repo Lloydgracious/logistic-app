@@ -106,14 +106,24 @@ interface GarageState {
   logs: LogEntry[];
 
   addCustomer: (customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>) => { ok: boolean; customer?: Customer; message?: string };
+  updateCustomer: (id: string, customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>) => { ok: boolean; message?: string };
+  deleteCustomer: (id: string) => void;
   addInventorySection: (title: string) => void;
+  updateInventorySection: (id: string, title: string) => void;
+  deleteInventorySection: (id: string) => void;
   addIncoming: (entry: Omit<Incoming, 'id' | 'status' | 'arrivalTime' | 'durationHours'> & { arrivalTime?: string, durationHours?: number }) => void;
+  updateIncoming: (id: string, entry: Omit<Incoming, 'id' | 'status'>) => void;
+  deleteIncoming: (id: string) => void;
   updateIncomingStatus: (id: string, status: IncomingStatus) => void;
 
   addOrder: (order: Omit<Order, 'id' | 'status' | 'orderTime' | 'finalDate'> & { orderTime?: string, finalDate?: string }) => { ok: boolean; message?: string };
+  updateOrder: (id: string, order: Omit<Order, 'id' | 'status'>) => { ok: boolean; message?: string };
+  deleteOrder: (id: string) => void;
   updateOrderStatus: (id: string, status: OrderStatus) => void;
 
   updateInventoryManual: (itemName: string, quantity: number, difference: number, unit?: string, containerNumber?: string, inventorySectionId?: string) => void;
+  updateStockRow: (id: string, updates: Pick<ContainerStock, 'containerNumber' | 'productName' | 'remainingQuantity' | 'unit' | 'inventorySectionId'>) => void;
+  deleteStockRow: (id: string) => void;
   addLog: (type: LogType, message: string) => void;
   loadRemoteData: () => Promise<void>;
 }
@@ -122,7 +132,23 @@ const generateId = () => Math.random().toString(36).substring(2, 9);
 
 const DEFAULT_SECTION_ID = "section-general";
 
-const initialInventorySections: InventorySection[] = [];
+const initialInventorySections: InventorySection[] = [
+  {
+    id: "seed-section-engine",
+    title: "Engine Parts",
+    createdAt: "2026-05-01T08:00:00.000Z",
+  },
+  {
+    id: "seed-section-tires",
+    title: "Tires And Wheels",
+    createdAt: "2026-05-01T08:05:00.000Z",
+  },
+  {
+    id: "seed-section-oils",
+    title: "Oils And Fluids",
+    createdAt: "2026-05-01T08:10:00.000Z",
+  },
+];
 
 const resolveSection = (sectionId: string | undefined, sections: InventorySection[]) => {
   return sections.find((section) => section.id === sectionId) || sections[0] || {
@@ -273,9 +299,195 @@ const queueRemoteSync = (state: GarageState, set: SetGarageState, scope: SyncSco
     });
 };
 
-const initialIncomingList: Incoming[] = [];
-const initialContainerStock: ContainerStock[] = [];
-const initialCustomers: Customer[] = [];
+const initialIncomingList: Incoming[] = [
+  {
+    id: "seed-incoming-1",
+    containerNumber: "CNT-2401",
+    carNumber: "YGN-4582",
+    supplierName: "Bangkok Auto Supply",
+    status: "IN_GARAGE",
+    arrivalTime: "2026-05-09T03:30:00.000Z",
+    durationHours: 24,
+    note: "Priority shipment for retail orders.",
+    items: [
+      {
+        name: "Oil Filter",
+        quantity: 120,
+        unit: "pcs",
+        containerNumber: "CNT-2401",
+        inventorySectionId: "seed-section-engine",
+        inventorySectionTitle: "Engine Parts",
+      },
+      {
+        name: "Synthetic Engine Oil",
+        quantity: 80,
+        unit: "bottles",
+        containerNumber: "CNT-2401",
+        inventorySectionId: "seed-section-oils",
+        inventorySectionTitle: "Oils And Fluids",
+      },
+    ],
+  },
+  {
+    id: "seed-incoming-2",
+    containerNumber: "CNT-2402",
+    carNumber: "MDY-9921",
+    supplierName: "Mandalar Tire Depot",
+    status: "AT_BRIDGE",
+    arrivalTime: "2026-05-11T02:00:00.000Z",
+    durationHours: 36,
+    note: "Check tire size labels before unloading.",
+    items: [
+      {
+        name: "All Terrain Tire 17",
+        quantity: 64,
+        unit: "pcs",
+        containerNumber: "CNT-2402",
+        inventorySectionId: "seed-section-tires",
+        inventorySectionTitle: "Tires And Wheels",
+      },
+    ],
+  },
+];
+
+const initialContainerStock: ContainerStock[] = [
+  {
+    id: "seed-stock-1",
+    containerId: "seed-incoming-1",
+    containerNumber: "CNT-2401",
+    carNumber: "YGN-4582",
+    supplierName: "Bangkok Auto Supply",
+    inventorySectionId: "seed-section-engine",
+    inventorySectionTitle: "Engine Parts",
+    productName: "Oil Filter",
+    initialQuantity: 120,
+    remainingQuantity: 105,
+    unit: "pcs",
+    receivedAt: "2026-05-09T03:30:00.000Z",
+    updatedAt: "2026-05-10T04:15:00.000Z",
+  },
+  {
+    id: "seed-stock-2",
+    containerId: "seed-incoming-1",
+    containerNumber: "CNT-2401",
+    carNumber: "YGN-4582",
+    supplierName: "Bangkok Auto Supply",
+    inventorySectionId: "seed-section-oils",
+    inventorySectionTitle: "Oils And Fluids",
+    productName: "Synthetic Engine Oil",
+    initialQuantity: 80,
+    remainingQuantity: 72,
+    unit: "bottles",
+    receivedAt: "2026-05-09T03:30:00.000Z",
+    updatedAt: "2026-05-10T04:15:00.000Z",
+  },
+  {
+    id: "seed-stock-3",
+    containerId: "manual-seed",
+    containerNumber: "MANUAL-01",
+    carNumber: "Manual Entry",
+    supplierName: "Manual Adjustment",
+    inventorySectionId: "seed-section-tires",
+    inventorySectionTitle: "Tires And Wheels",
+    productName: "Wheel Nut Set",
+    initialQuantity: 200,
+    remainingQuantity: 200,
+    unit: "sets",
+    receivedAt: "2026-05-08T09:00:00.000Z",
+    updatedAt: "2026-05-08T09:00:00.000Z",
+  },
+];
+
+const initialCustomers: Customer[] = [
+  {
+    id: "seed-customer-1",
+    name: "Aung Auto Service",
+    phone: "09-421-555-010",
+    address: "Thingangyun, Yangon",
+    note: "Prefers morning delivery.",
+    createdAt: "2026-05-07T08:00:00.000Z",
+    updatedAt: "2026-05-07T08:00:00.000Z",
+  },
+  {
+    id: "seed-customer-2",
+    name: "Mandalay Fleet Care",
+    phone: "09-777-220-330",
+    address: "Chan Aye Tharzan, Mandalay",
+    note: "Call before loading.",
+    createdAt: "2026-05-08T08:00:00.000Z",
+    updatedAt: "2026-05-08T08:00:00.000Z",
+  },
+];
+
+const initialOrders: Order[] = [
+  {
+    id: "seed-order-1",
+    customerName: "Aung Auto Service",
+    carNumber: "YGN-7721",
+    status: "PREPARING",
+    orderTime: "2026-05-10T04:15:00.000Z",
+    finalDate: "2026-05-13T04:15:00.000Z",
+    customerNote: "Pack filters separately.",
+    items: [
+      {
+        name: "Oil Filter",
+        quantity: 15,
+        unit: "pcs",
+        containerId: "seed-stock-1",
+        containerNumber: "CNT-2401",
+      },
+      {
+        name: "Synthetic Engine Oil",
+        quantity: 8,
+        unit: "bottles",
+        containerId: "seed-stock-2",
+        containerNumber: "CNT-2401",
+      },
+    ],
+  },
+  {
+    id: "seed-order-2",
+    customerName: "Mandalay Fleet Care",
+    carNumber: "MDY-3388",
+    status: "PENDING",
+    orderTime: "2026-05-11T06:45:00.000Z",
+    finalDate: "2026-05-14T06:45:00.000Z",
+    customerNote: "Hold until payment confirmation.",
+    items: [
+      {
+        name: "Wheel Nut Set",
+        quantity: 12,
+        unit: "sets",
+        containerId: "seed-stock-3",
+        containerNumber: "MANUAL-01",
+      },
+    ],
+  },
+];
+
+const initialLogs: LogEntry[] = [
+  {
+    id: "seed-log-1",
+    type: "INCOMING",
+    message: "CNT-2401 reached garage and products are ready for orders",
+    timestamp: "2026-05-09T05:00:00.000Z",
+    operator: "Seed Admin",
+  },
+  {
+    id: "seed-log-2",
+    type: "OUTGOING",
+    message: "Order created for Aung Auto Service",
+    timestamp: "2026-05-10T04:15:00.000Z",
+    operator: "Seed Admin",
+  },
+  {
+    id: "seed-log-3",
+    type: "MANUAL",
+    message: "Wheel Nut Set added under Tires And Wheels",
+    timestamp: "2026-05-08T09:00:00.000Z",
+    operator: "Seed Admin",
+  },
+];
 
 export const useStore = create<GarageState>((set, get) => ({
   isHydrated: false,
@@ -284,10 +496,10 @@ export const useStore = create<GarageState>((set, get) => ({
   incomingList: initialIncomingList,
   inventorySections: initialInventorySections,
   customers: initialCustomers,
-  orders: [],
+  orders: initialOrders,
   containerStock: initialContainerStock,
   inventory: recalculateInventory(initialContainerStock, initialInventorySections),
-  logs: [],
+  logs: initialLogs,
 
   loadRemoteData: async () => {
     if (!canUseSupabase()) {
@@ -354,6 +566,49 @@ export const useStore = create<GarageState>((set, get) => ({
     queueRemoteSync(get(), set, "inventory");
   },
 
+  updateInventorySection: (id, title) => {
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) return;
+
+    set((state) => {
+      const section = state.inventorySections.find((item) => item.id === id);
+      if (!section) return state;
+
+      const inventorySections = state.inventorySections.map((item) =>
+        item.id === id ? { ...item, title: trimmedTitle } : item
+      );
+      const containerStock = state.containerStock.map((row) =>
+        row.inventorySectionId === id ? { ...row, inventorySectionTitle: trimmedTitle, updatedAt: new Date().toISOString() } : row
+      );
+
+      return {
+        inventorySections,
+        containerStock,
+        inventory: recalculateInventory(containerStock, inventorySections),
+      };
+    });
+    queueRemoteSync(get(), set, "all");
+    get().addLog('MANUAL', `Inventory header renamed to ${trimmedTitle}`);
+  },
+
+  deleteInventorySection: (id) => {
+    const section = get().inventorySections.find((item) => item.id === id);
+    if (!section) return;
+
+    set((state) => {
+      const inventorySections = state.inventorySections.filter((item) => item.id !== id);
+      const containerStock = state.containerStock.filter((row) => row.inventorySectionId !== id);
+
+      return {
+        inventorySections,
+        containerStock,
+        inventory: recalculateInventory(containerStock, inventorySections),
+      };
+    });
+    queueRemoteSync(get(), set, "all");
+    get().addLog('MANUAL', `Inventory header deleted: ${section.title}`);
+  },
+
   addLog: (type, message) => {
     set((state) => ({
       logs: [{ id: generateId(), type, message, timestamp: new Date().toISOString(), operator: "Master Admin" }, ...state.logs],
@@ -386,6 +641,47 @@ export const useStore = create<GarageState>((set, get) => ({
     return { ok: true, customer: newCustomer };
   },
 
+  updateCustomer: (id, customer) => {
+    const name = customer.name.trim();
+    if (!name) return { ok: false, message: "Customer name is required." };
+
+    const existing = get().customers.find((item) => item.id !== id && item.name.toLowerCase() === name.toLowerCase());
+    if (existing) return { ok: false, message: "Another customer already uses this name." };
+
+    const previous = get().customers.find((item) => item.id === id);
+    if (!previous) return { ok: false, message: "Customer not found." };
+
+    set((state) => ({
+      customers: state.customers.map((item) => item.id === id ? {
+        ...item,
+        name,
+        phone: customer.phone?.trim() || undefined,
+        address: customer.address?.trim() || undefined,
+        note: customer.note?.trim() || undefined,
+        updatedAt: new Date().toISOString(),
+      } : item),
+      orders: state.orders.map((order) =>
+        order.customerName.toLowerCase() === previous.name.toLowerCase()
+          ? { ...order, customerName: name }
+          : order
+      ),
+    }));
+    queueRemoteSync(get(), set, "all");
+    get().addLog('MANUAL', `Customer profile updated for ${name}`);
+    return { ok: true };
+  },
+
+  deleteCustomer: (id) => {
+    const customer = get().customers.find((item) => item.id === id);
+    if (!customer) return;
+
+    set((state) => ({
+      customers: state.customers.filter((item) => item.id !== id),
+    }));
+    queueRemoteSync(get(), set, "all");
+    get().addLog('MANUAL', `Customer profile deleted for ${customer.name}`);
+  },
+
   addIncoming: (entry) => {
     const newIncoming: Incoming = {
       ...entry,
@@ -398,6 +694,74 @@ export const useStore = create<GarageState>((set, get) => ({
     set((state) => ({ incomingList: [newIncoming, ...state.incomingList] }));
     get().addLog('INCOMING', `Expected ${newIncoming.containerNumber} from ${entry.supplierName} on car ${entry.carNumber}`);
     queueRemoteSync(get(), set, "incoming");
+  },
+
+  updateIncoming: (id, entry) => {
+    const carNumber = entry.carNumber.trim();
+    const supplierName = entry.supplierName.trim();
+    const items = entry.items.map((item) => ({
+      ...item,
+      name: item.name.trim(),
+      containerNumber: item.containerNumber?.trim() || entry.containerNumber,
+      quantity: Math.max(0, item.quantity),
+      unit: item.unit?.trim() || undefined,
+    }));
+    const firstContainerNumber = items[0]?.containerNumber || entry.containerNumber.trim();
+    if (!carNumber || !supplierName || !firstContainerNumber || items.some((item) => !item.name || !item.quantity || !item.inventorySectionId)) return;
+
+    set((state) => {
+      const existing = state.incomingList.find((incoming) => incoming.id === id);
+      if (!existing) return state;
+
+      const nextIncoming: Incoming = {
+        ...existing,
+        containerNumber: firstContainerNumber,
+        carNumber,
+        supplierName,
+        items,
+        arrivalTime: entry.arrivalTime,
+        durationHours: entry.durationHours || 24,
+        note: entry.note?.trim() || undefined,
+      };
+      const incomingList = state.incomingList.map((incoming) => incoming.id === id ? {
+        ...nextIncoming,
+      } : incoming);
+
+      const otherStock = state.containerStock.filter((row) => row.containerId !== id);
+      const containerStock = existing.status === "IN_GARAGE"
+        ? createStockRows(nextIncoming, otherStock, state.inventorySections)
+        : state.containerStock.map((row) => row.containerId === id ? {
+          ...row,
+          carNumber,
+          supplierName,
+          updatedAt: new Date().toISOString(),
+        } : row);
+
+      return {
+        incomingList,
+        containerStock,
+        inventory: recalculateInventory(containerStock, state.inventorySections),
+      };
+    });
+    queueRemoteSync(get(), set, "all");
+    get().addLog('INCOMING', `Incoming shipment updated for car ${carNumber}`);
+  },
+
+  deleteIncoming: (id) => {
+    const incoming = get().incomingList.find((item) => item.id === id);
+    if (!incoming) return;
+
+    set((state) => {
+      const containerStock = state.containerStock.filter((row) => row.containerId !== id);
+
+      return {
+        incomingList: state.incomingList.filter((item) => item.id !== id),
+        containerStock,
+        inventory: recalculateInventory(containerStock, state.inventorySections),
+      };
+    });
+    queueRemoteSync(get(), set, "all");
+    get().addLog('INCOMING', `Incoming shipment deleted for ${incoming.containerNumber}`);
   },
 
   updateIncomingStatus: (id, status) => {
@@ -494,6 +858,129 @@ export const useStore = create<GarageState>((set, get) => ({
     return { ok: true };
   },
 
+  updateOrder: (id, order) => {
+    const customerName = order.customerName.trim();
+    const carNumber = order.carNumber.trim();
+    if (!customerName || !carNumber) return { ok: false, message: "Customer and vehicle are required." };
+
+    const existingOrder = get().orders.find((item) => item.id === id);
+    if (!existingOrder) return { ok: false, message: "Order not found." };
+
+    const requestedItems = order.items.map((item) => ({
+      ...item,
+      quantity: Math.max(0, item.quantity),
+    }));
+
+    const stockWithReturnedItems = get().containerStock.map((row) => {
+      const returnedQuantity = existingOrder.items
+        .filter((item) => item.containerId === row.id)
+        .reduce((sum, item) => sum + item.quantity, 0);
+
+      if (!returnedQuantity) return row;
+      return {
+        ...row,
+        remainingQuantity: Math.min(row.initialQuantity, row.remainingQuantity + returnedQuantity),
+      };
+    });
+
+    for (const item of requestedItems) {
+      const stockRow = stockWithReturnedItems.find((row) => row.id === item.containerId);
+      if (!stockRow) {
+        return { ok: false, message: `Choose a container for ${item.name}.` };
+      }
+      if (stockRow.remainingQuantity < item.quantity) {
+        return {
+          ok: false,
+          message: `${stockRow.containerNumber} only has ${stockRow.remainingQuantity} ${stockRow.unit || 'units'} of ${stockRow.productName} left.`,
+        };
+      }
+    }
+
+    const existingCustomer = get().customers.find((customer) => customer.name.toLowerCase() === customerName.toLowerCase());
+    if (!existingCustomer) {
+      const customerResult = get().addCustomer({
+        name: customerName,
+        note: order.customerNote,
+      });
+      if (!customerResult.ok) return { ok: false, message: customerResult.message };
+    }
+
+    set((state) => {
+      const now = new Date().toISOString();
+      const returnedStock = state.containerStock.map((row) => {
+        const returnedQuantity = existingOrder.items
+          .filter((item) => item.containerId === row.id)
+          .reduce((sum, item) => sum + item.quantity, 0);
+
+        if (!returnedQuantity) return row;
+        return {
+          ...row,
+          remainingQuantity: Math.min(row.initialQuantity, row.remainingQuantity + returnedQuantity),
+          updatedAt: now,
+        };
+      });
+
+      const containerStock = returnedStock.map((row) => {
+        const orderedQuantity = requestedItems
+          .filter((item) => item.containerId === row.id)
+          .reduce((sum, item) => sum + item.quantity, 0);
+
+        if (!orderedQuantity) return row;
+        return {
+          ...row,
+          remainingQuantity: Math.max(0, row.remainingQuantity - orderedQuantity),
+          updatedAt: now,
+        };
+      });
+
+      return {
+        orders: state.orders.map((item) => item.id === id ? {
+          ...item,
+          customerName,
+          carNumber,
+          items: requestedItems,
+          orderTime: order.orderTime,
+          finalDate: order.finalDate,
+          customerNote: order.customerNote?.trim() || undefined,
+        } : item),
+        containerStock,
+        inventory: recalculateInventory(containerStock, state.inventorySections),
+      };
+    });
+    queueRemoteSync(get(), set, "orders");
+    get().addLog('OUTGOING', `Order updated for ${customerName}`);
+    return { ok: true };
+  },
+
+  deleteOrder: (id) => {
+    const order = get().orders.find((item) => item.id === id);
+    if (!order) return;
+
+    set((state) => {
+      const containerStock = state.containerStock.map((row) => {
+        const returnedQuantity = order.items
+          .filter((item) => item.containerId === row.id)
+          .reduce((sum, item) => sum + item.quantity, 0);
+
+        if (!returnedQuantity) return row;
+
+        return {
+          ...row,
+          remainingQuantity: Math.min(row.initialQuantity, row.remainingQuantity + returnedQuantity),
+          updatedAt: new Date().toISOString(),
+        };
+      });
+
+      return {
+        orders: state.orders.filter((item) => item.id !== id),
+        containerStock,
+        inventory: recalculateInventory(containerStock, state.inventorySections),
+      };
+    });
+    queueRemoteSync(get(), set, "all");
+    get().addLog('OUTGOING', `Order deleted for ${order.customerName}; stock was returned`);
+  },
+
   updateOrderStatus: (id, status) => {
     set((state) => {
       const order = state.orders.find((o) => o.id === id);
@@ -564,5 +1051,49 @@ export const useStore = create<GarageState>((set, get) => ({
       };
     });
     queueRemoteSync(get(), set, "inventory");
+  },
+
+  updateStockRow: (id, updates) => {
+    const productName = updates.productName.trim();
+    const containerNumber = updates.containerNumber.trim();
+    if (!productName || !containerNumber) return;
+
+    set((state) => {
+      const section = resolveSection(updates.inventorySectionId, state.inventorySections);
+      const containerStock = state.containerStock.map((row) => row.id === id ? {
+        ...row,
+        containerNumber,
+        productName,
+        inventorySectionId: section.id,
+        inventorySectionTitle: section.title,
+        remainingQuantity: Math.max(0, updates.remainingQuantity),
+        initialQuantity: Math.max(row.initialQuantity, updates.remainingQuantity),
+        unit: updates.unit?.trim() || undefined,
+        updatedAt: new Date().toISOString(),
+      } : row);
+
+      return {
+        containerStock,
+        inventory: recalculateInventory(containerStock, state.inventorySections),
+      };
+    });
+    queueRemoteSync(get(), set, "inventory");
+    get().addLog('MANUAL', `Inventory stock row updated for ${productName}`);
+  },
+
+  deleteStockRow: (id) => {
+    const row = get().containerStock.find((item) => item.id === id);
+    if (!row) return;
+
+    set((state) => {
+      const containerStock = state.containerStock.filter((item) => item.id !== id);
+
+      return {
+        containerStock,
+        inventory: recalculateInventory(containerStock, state.inventorySections),
+      };
+    });
+    queueRemoteSync(get(), set, "all");
+    get().addLog('MANUAL', `Inventory stock row deleted for ${row.productName}`);
   },
 }));

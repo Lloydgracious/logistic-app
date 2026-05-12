@@ -307,7 +307,8 @@ create policy "Profiles are visible to self or admins"
   using ((select auth.uid()) = id or app_private.is_admin());
 
 drop policy if exists "Users can create invited or bootstrap profiles" on public.profiles;
-create policy "Users can create invited or bootstrap profiles"
+drop policy if exists "Users can create own staff or bootstrap admin profile" on public.profiles;
+create policy "Users can create own staff or bootstrap admin profile"
   on public.profiles for insert
   to authenticated
   with check (
@@ -315,7 +316,7 @@ create policy "Users can create invited or bootstrap profiles"
     and status = 'active'
     and (
       (role = 'admin' and app_private.is_first_admin())
-      or (role = 'staff' and app_private.has_pending_invite(email))
+      or role = 'staff'
     )
   );
 

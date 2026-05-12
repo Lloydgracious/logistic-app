@@ -55,26 +55,7 @@ async function createBootstrapAdmin(user: User) {
   return data as AppProfile | null;
 }
 
-async function promoteBootstrapAdmin(profile: AppProfile) {
-  const supabase = createClient();
-  if (!supabase || profile.role === "admin") return profile;
-
-  const { data, error } = await supabase
-    .from("profiles")
-    .update({
-      role: "admin",
-      status: "active",
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", profile.id)
-    .select("*")
-    .maybeSingle();
-
-  if (error) return profile;
-  return data as AppProfile | null;
-}
-
-async function createInvitedStaffProfile(user: User) {
+async function createStaffProfile(user: User) {
   const supabase = createClient();
   if (!supabase || !user.email) return null;
 
@@ -138,11 +119,7 @@ export async function getCurrentAccount(): Promise<CurrentAccount> {
   }
 
   if (!profile) {
-    profile = await createInvitedStaffProfile(user);
-  }
-
-  if (profile && profile.role !== "admin") {
-    profile = await promoteBootstrapAdmin(profile);
+    profile = await createStaffProfile(user);
   }
 
   if (!profile) {

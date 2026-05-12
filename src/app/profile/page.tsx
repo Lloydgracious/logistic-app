@@ -1,116 +1,83 @@
 "use client";
 
-
-import { User, Mail, Camera, Save, ArrowLeft } from "lucide-react";
-
+import { ArrowLeft, CheckCircle2, Clock, Lock, Mail, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
+
+import { MODULES } from "@/lib/access-control";
+import { useCurrentAccount } from "@/lib/account-context";
 
 export default function ProfilePage() {
   const router = useRouter();
+  const account = useCurrentAccount();
+  const profile = account?.status === "ready" || account?.status === "disabled" ? account.profile : null;
+  const enabledModules = account?.status === "ready" || account?.status === "disabled" ? account.enabledModules : [];
+  const isAdmin = profile?.role === "admin";
 
   return (
-    <div className="max-w-4xl mx-auto w-full pb-20 animate-in fade-in slide-in-from-bottom-8 duration-500">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <button onClick={() => router.back()} className="text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-slate-800 dark:text-slate-100 transition-colors flex items-center gap-2 text-sm font-bold mb-2">
-            <ArrowLeft className="w-4 h-4" /> Back
-          </button>
-          <h1 className="text-3xl md:text-4xl font-black text-slate-800 dark:text-slate-100 tracking-tight outfit">
-            Profile Settings
+    <div className="mx-auto max-w-4xl w-full pb-20 animate-in fade-in slide-in-from-bottom-8 duration-500">
+      <button onClick={() => router.back()} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-slate-500 transition-colors hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white">
+        <ArrowLeft className="h-4 w-4" /> Back
+      </button>
+
+      <section className="saas-card overflow-hidden rounded-none border-l-4 border-l-cyan-500">
+        <div className="border-b border-slate-100 p-6 dark:border-slate-800">
+          <div className="mb-4 inline-flex h-12 w-12 items-center justify-center border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-300">
+            {enabledModules.length > 0 || isAdmin ? <ShieldCheck className="h-6 w-6" /> : <Clock className="h-6 w-6" />}
+          </div>
+          <h1 className="text-3xl font-black uppercase tracking-tight text-slate-900 dark:text-white outfit">
+            {enabledModules.length > 0 || isAdmin ? "Account Access" : "Waiting For Access"}
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500 mt-1 font-medium text-sm">
-            Manage your account settings and preferences.
+          <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-slate-500 dark:text-zinc-400">
+            {isAdmin
+              ? "This admin account has full access to every module."
+              : enabledModules.length > 0
+                ? "These are the pages your admin has enabled for your account."
+                : "Your account is active, but an admin has not enabled any pages yet. Ask an admin to turn on the modules you need."}
           </p>
         </div>
-        <button className="px-5 py-2.5 bg-primary text-white font-bold rounded-lg shadow-sm hover:shadow-md hover:bg-primaryHover transition-all flex items-center gap-2">
-          <Save className="w-4 h-4" /> Save Changes
-        </button>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Sidebar Navigation & Quick Info */}
-        <div className="space-y-6">
-          <div className="saas-card p-6 flex flex-col items-center text-center">
-            <div className="relative mb-4 group cursor-pointer">
-              <div className="w-24 h-24 rounded-full border-4 border-white shadow-md overflow-hidden relative">
-                <div 
-                  className="w-full h-full bg-cover bg-center group-hover:opacity-80 transition-opacity"
-                  style={{ backgroundImage: `url('https://i.pravatar.cc/150?img=11')` }}
-                  aria-label="John Smith"
-                />
-              </div>
-              <div className="absolute inset-0 bg-slate-900/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <Camera className="text-white w-6 h-6" />
-              </div>
-              <div className="absolute bottom-0 right-0 w-6 h-6 bg-primary rounded-full border-2 border-white flex items-center justify-center shadow-sm">
-                 <div className="w-2 h-2 bg-white dark:bg-black rounded-full"></div>
-              </div>
-            </div>
-            
-            <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 outfit">John Smith</h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 font-medium mb-4">Logistics Manager</p>
-            
-            <div className="w-full h-[1px] bg-slate-200 dark:bg-slate-700 mb-4"></div>
-            
-            <p className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider w-full text-left mb-2">Account Status</p>
-            <div className="w-full flex items-center justify-between text-sm">
-              <span className="font-semibold text-slate-600 dark:text-slate-300">Plan</span>
-              <span className="font-bold text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20">Enterprise</span>
+        <div className="grid gap-4 p-6 md:grid-cols-2">
+          <div className="border border-slate-200 p-4 dark:border-slate-800">
+            <p className="mb-2 text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Signed In As</p>
+            <div className="flex items-center gap-3 text-sm font-black text-slate-800 dark:text-white">
+              <Mail className="h-4 w-4 text-cyan-600" />
+              {profile?.email || "Loading account..."}
             </div>
           </div>
 
-          <div className="saas-card p-3">
-            <div className="space-y-1">
-              {[
-                { icon: User, label: "Personal Info", active: true },
-              ].map((item) => (
-                <button 
-                  key={item.label}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-bold text-sm transition-colors ${item.active ? 'bg-slate-100 dark:bg-zinc-900 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700' : 'text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:bg-slate-50 dark:bg-zinc-900 hover:text-slate-700 dark:text-slate-200 border border-transparent'}`}
-                >
-                  <item.icon className="w-4 h-4" />
-                  {item.label}
-                </button>
-              ))}
+          <div className="border border-slate-200 p-4 dark:border-slate-800">
+            <p className="mb-2 text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Account Type</p>
+            <div className="flex items-center gap-2">
+              <span className="border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:border-slate-800 dark:bg-black dark:text-zinc-300">
+                {profile?.role || "staff"}
+              </span>
+              <span className="border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700">
+                {profile?.status || "active"}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Right Column: Forms */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="saas-card p-6">
-            <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 mb-5 pb-4 border-b border-slate-100 dark:border-slate-700/50">Personal Information</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
-              <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-1.5" htmlFor="firstName">First Name</label>
-                <div className="relative">
-                  <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                  <input type="text" id="firstName" defaultValue="John" className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-slate-700 rounded-lg py-2 pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-medium text-slate-800 dark:text-slate-100" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-1.5" htmlFor="lastName">Last Name</label>
-                <div className="relative">
-                  <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                  <input type="text" id="lastName" defaultValue="Smith" className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-slate-700 rounded-lg py-2 pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-medium text-slate-800 dark:text-slate-100" />
-                </div>
-              </div>
-            </div>
+        <div className="border-t border-slate-100 p-6 dark:border-slate-800">
+          <h2 className="mb-4 text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">Page Access</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {MODULES.map((module) => {
+              const enabled = isAdmin || enabledModules.includes(module.key);
+              const Icon = module.icon;
 
-            <div className="mb-5">
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-200 mb-1.5" htmlFor="email">Email Address</label>
-              <div className="relative">
-                <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                <input type="email" id="email" defaultValue="john@logistics.inc" className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-slate-700 rounded-lg py-2 pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-medium text-slate-800 dark:text-slate-100" />
-              </div>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-2 font-medium">Changing your email address will require re-verification.</p>
-            </div>
+              return (
+                <div key={module.key} className={`flex items-center justify-between border p-3 ${enabled ? "border-cyan-200 bg-cyan-50 text-cyan-800 dark:border-cyan-900/60 dark:bg-cyan-950/20 dark:text-cyan-300" : "border-slate-200 bg-white text-slate-400 dark:border-slate-800 dark:bg-black dark:text-zinc-600"}`}>
+                  <span className="flex items-center gap-3">
+                    <Icon className="h-4 w-4" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">{module.label}</span>
+                  </span>
+                  {enabled ? <CheckCircle2 className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                </div>
+              );
+            })}
           </div>
-
-
         </div>
-      </div>
+      </section>
     </div>
   );
 }

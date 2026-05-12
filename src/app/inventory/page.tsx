@@ -2,20 +2,34 @@
 
 import { useStore } from "@/lib/store";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Package, AlertCircle, Search, Truck } from "lucide-react";
+import { Plus, Package, AlertCircle, Search, Truck, Pencil, Trash } from "lucide-react";
 import { useState } from "react";
+import { useAdminAccess } from "@/lib/use-admin-access";
 
 export default function InventoryPage() {
-  const { inventory, inventorySections, containerStock, addInventorySection, updateInventoryManual } = useStore();
+  const {
+    inventory,
+    inventorySections,
+    containerStock,
+    addInventorySection,
+    updateInventoryManual,
+    updateInventorySection,
+    deleteInventorySection,
+    updateStockRow,
+    deleteStockRow,
+  } = useStore();
+  const isAdmin = useAdminAccess();
   const [showAdd, setShowAdd] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
   const [newHeaderTitle, setNewHeaderTitle] = useState("");
+  const [editingHeaderId, setEditingHeaderId] = useState<string | null>(null);
   const [itemSectionId, setItemSectionId] = useState(inventorySections[0]?.id || "");
   const [itemName, setItemName] = useState("");
   const [itemQty, setItemQty] = useState("");
   const [itemUnit, setItemUnit] = useState("");
   const [containerNumber, setContainerNumber] = useState("");
+  const [editingStockId, setEditingStockId] = useState<string | null>(null);
 
   const filteredInventory = inventory.filter((item) =>
     item.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -47,7 +61,12 @@ export default function InventoryPage() {
   const handleAddHeader = () => {
     const trimmedTitle = newHeaderTitle.trim();
     if (!trimmedTitle) return;
-    addInventorySection(trimmedTitle);
+    if (editingHeaderId) {
+      updateInventorySection(editingHeaderId, trimmedTitle);
+      setEditingHeaderId(null);
+    } else {
+      addInventorySection(trimmedTitle);
+    }
     setNewHeaderTitle("");
   };
 
@@ -55,9 +74,20 @@ export default function InventoryPage() {
     if (!itemSectionId || !itemName || !itemQty) return;
     const qty = parseInt(itemQty);
     if (!isNaN(qty)) {
-      updateInventoryManual(itemName, qty, qty, itemUnit, containerNumber, itemSectionId);
+      if (editingStockId) {
+        updateStockRow(editingStockId, {
+          inventorySectionId: itemSectionId,
+          containerNumber: containerNumber || "MANUAL",
+          productName: itemName,
+          remainingQuantity: qty,
+          unit: itemUnit,
+        });
+      } else {
+        updateInventoryManual(itemName, qty, qty, itemUnit, containerNumber, itemSectionId);
+      }
     }
     setShowAdd(false);
+    setEditingStockId(null);
     setItemName("");
     setItemQty("");
     setItemUnit("");
@@ -69,6 +99,38 @@ export default function InventoryPage() {
     if (!row) return;
     const newQty = Math.max(0, row.remainingQuantity + difference);
     updateInventoryManual(row.productName, newQty, difference, row.unit, row.containerNumber, row.inventorySectionId);
+  };
+
+  const handleEditSection = (sectionId: string, currentTitle: string) => {
+    setEditingHeaderId(sectionId);
+    setNewHeaderTitle(currentTitle);
+  };
+
+  const handleDeleteSection = (sectionId: string, title: string) => {
+    if (window.confirm(`Delete header ${title}? This also deletes stock rows under this header.`)) {
+      deleteInventorySection(sectionId);
+    }
+  };
+
+  const handleEditStock = (rowId: string) => {
+    const row = containerStock.find((item) => item.id === rowId);
+    if (!row) return;
+
+    setEditingStockId(rowId);
+    setShowAdd(true);
+    setItemSectionId(row.inventorySectionId);
+    setContainerNumber(row.containerNumber);
+    setItemName(row.productName);
+    setItemQty(String(row.remainingQuantity));
+    setItemUnit(row.unit || "");
+  };
+
+  const handleDeleteStock = (rowId: string) => {
+    const row = containerStock.find((item) => item.id === rowId);
+    if (!row) return;
+    if (window.confirm(`Delete ${row.productName} from ${row.containerNumber}?`)) {
+      deleteStockRow(rowId);
+    }
   };
 
   return (
@@ -89,7 +151,18 @@ export default function InventoryPage() {
             />
           </div>
           <button
-            onClick={() => setShowAdd(!showAdd)}
+            onClick={() => {
+              if (showAdd) {
+                setShowAdd(false);
+                setEditingStockId(null);
+                setItemName("");
+                setItemQty("");
+                setItemUnit("");
+                setContainerNumber("");
+                return;
+              }
+              setShowAdd(true);
+            }}
             className="flex items-center justify-center gap-2 bg-slate-950 dark:bg-white text-white dark:text-black px-6 py-3 rounded-none font-black text-xs uppercase tracking-widest transition-all shadow-xl hover:bg-cyan-600 dark:hover:bg-cyan-500 hover:text-white"
           >
             <Plus className={`w-4 h-4 transition-transform ${showAdd ? 'rotate-45' : ''}`} /> {showAdd ? 'Close' : 'Add Product'}
@@ -112,8 +185,19 @@ export default function InventoryPage() {
             onClick={handleAddHeader}
             className="px-6 py-3 rounded-none bg-cyan-600 text-white hover:bg-slate-950 dark:hover:bg-white dark:hover:text-black transition-all shadow-lg font-black text-[10px] uppercase tracking-widest"
           >
-            Add Header
+            {editingHeaderId ? "Save Header" : "Add Header"}
           </button>
+          {editingHeaderId && (
+            <button
+              onClick={() => {
+                setEditingHeaderId(null);
+                setNewHeaderTitle("");
+              }}
+              className="px-6 py-3 rounded-none border border-slate-200 text-slate-500 hover:bg-slate-50 transition-all font-black text-[10px] uppercase tracking-widest"
+            >
+              Cancel
+            </button>
+          )}
         </div>
       </div>
 
@@ -126,7 +210,7 @@ export default function InventoryPage() {
             className="overflow-hidden"
           >
             <div className="saas-card p-6 border-2 border-cyan-500/20 bg-cyan-50/10 mb-6 rounded-none">
-              <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 italic mb-6">Add Product Under Header</h3>
+              <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 italic mb-6">{editingStockId ? "Edit Product Under Header" : "Add Product Under Header"}</h3>
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
                  <div className="space-y-1.5">
                    <label className="text-[10px] text-slate-500 uppercase font-black px-1 tracking-wider">Header</label>
@@ -159,8 +243,15 @@ export default function InventoryPage() {
                  </div>
               </div>
               <div className="flex justify-end gap-3 pt-2">
-                 <button onClick={() => setShowAdd(false)} className="px-6 py-2.5 rounded-none text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-900 transition-all font-black text-[10px] uppercase tracking-widest">Cancel</button>
-                 <button onClick={handleAdd} className="px-8 py-2.5 rounded-none bg-slate-950 dark:bg-white text-white dark:text-black transition-all shadow-lg hover:bg-cyan-600 dark:hover:bg-cyan-500 hover:text-white font-black text-[10px] uppercase tracking-widest">Save Stock</button>
+                 <button onClick={() => {
+                  setShowAdd(false);
+                  setEditingStockId(null);
+                  setItemName("");
+                  setItemQty("");
+                  setItemUnit("");
+                  setContainerNumber("");
+                }} className="px-6 py-2.5 rounded-none text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-900 transition-all font-black text-[10px] uppercase tracking-widest">Cancel</button>
+                 <button onClick={handleAdd} className="px-8 py-2.5 rounded-none bg-slate-950 dark:bg-white text-white dark:text-black transition-all shadow-lg hover:bg-cyan-600 dark:hover:bg-cyan-500 hover:text-white font-black text-[10px] uppercase tracking-widest">{editingStockId ? "Save Stock" : "Add Stock"}</button>
               </div>
             </div>
           </motion.div>
@@ -179,6 +270,16 @@ export default function InventoryPage() {
                 <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight outfit italic">{section.title}</h3>
                 <p className="text-[10px] text-slate-400 uppercase tracking-[0.25em] font-black mt-1">{section.stock.length} container rows / {section.inventory.length} products</p>
               </div>
+              {isAdmin && (
+                <div className="flex gap-2">
+                  <button onClick={() => handleEditSection(section.id, section.title)} className="p-2 border border-slate-300 text-slate-600 hover:border-cyan-300 hover:text-cyan-600 transition-colors" aria-label="Edit header" title="Edit header">
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => handleDeleteSection(section.id, section.title)} className="p-2 border border-slate-300 text-slate-600 hover:border-rose-300 hover:text-rose-600 transition-colors" aria-label="Delete header" title="Delete header">
+                    <Trash className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
 
             {section.inventory.length > 0 && (
@@ -224,6 +325,7 @@ export default function InventoryPage() {
                       <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Original</th>
                       <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Source</th>
                       <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.4em] text-cyan-600 text-right">Adjustment</th>
+                      {isAdmin && <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.4em] text-rose-600 text-right">Admin</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -267,6 +369,18 @@ export default function InventoryPage() {
                               <button onClick={() => handleAdjust(row.id, +10)} className="w-10 h-10 rounded-none bg-white dark:bg-zinc-900 hover:bg-emerald-500 hover:text-white flex items-center justify-center transition text-slate-600 dark:text-zinc-400 border border-slate-200 dark:border-slate-800 font-black shadow-sm">+</button>
                             </div>
                           </td>
+                          {isAdmin && (
+                            <td className="px-6 py-6 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <button onClick={() => handleEditStock(row.id)} className="w-10 h-10 rounded-none bg-white dark:bg-zinc-900 hover:bg-cyan-500 hover:text-white flex items-center justify-center transition text-slate-600 dark:text-zinc-400 border border-slate-200 dark:border-slate-800 shadow-sm" aria-label="Edit stock" title="Edit stock">
+                                  <Pencil className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => handleDeleteStock(row.id)} className="w-10 h-10 rounded-none bg-white dark:bg-zinc-900 hover:bg-rose-500 hover:text-white flex items-center justify-center transition text-slate-600 dark:text-zinc-400 border border-slate-200 dark:border-slate-800 shadow-sm" aria-label="Delete stock" title="Delete stock">
+                                  <Trash className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          )}
                         </motion.tr>
                       );
                     })}

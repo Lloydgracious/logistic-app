@@ -135,8 +135,8 @@ export async function getCurrentAccount(inviteToken?: string): Promise<CurrentAc
     profile = await createBootstrapAdmin(user);
   }
 
-  if (!profile) {
-    profile = await createStaffProfile(user, inviteToken || String(user.user_metadata?.invite_token || ""));
+  if (!profile && inviteToken) {
+    profile = await createStaffProfile(user, inviteToken);
   }
 
   if (!profile) {

@@ -1,9 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Bell, Package, AlertTriangle, Truck, CheckCircle2, Search, SlidersHorizontal, Settings } from "lucide-react";
+import { Bell, Package, AlertTriangle, Truck, CheckCircle2, Search, Settings } from "lucide-react";
 import { useState } from "react";
-import Link from "next/link";
 
 type Notification = {
   id: string;
@@ -110,9 +109,6 @@ export default function NotificationsPage() {
           >
             <CheckCircle2 className="w-4 h-4" /> Mark all read
           </button>
-          <Link href="/profile" className="px-4 py-2 bg-white dark:bg-black border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold text-sm rounded-lg hover:bg-slate-50 dark:bg-zinc-900 hover:text-slate-800 dark:text-slate-100 transition-colors shadow-sm flex items-center gap-2">
-            <SlidersHorizontal className="w-4 h-4" /> Settings
-          </Link>
         </div>
       </div>
 

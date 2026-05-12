@@ -78,6 +78,7 @@ export function Navbar() {
   const profile = account?.status === "ready" || account?.status === "disabled" ? account.profile : null;
   const enabledModules: ModuleKey[] = account?.status === "ready" || account?.status === "disabled" ? account.enabledModules : [];
   const navigationLinks = profile ? getAllowedModules(profile.role, enabledModules) : [];
+  const primaryNavigationLinks = navigationLinks.filter((link) => link.key !== "notifications");
   const adminLink = profile?.role === "admin" ? ADMIN_MODULE : null;
   const canOpenNotifications = profile?.role === "admin" || enabledModules.includes("notifications");
   const homeHref = profile ? getDefaultLanding(profile.role, enabledModules) : "/dashboard";
@@ -102,7 +103,7 @@ export function Navbar() {
           </Link>
 
           <nav className="hidden xl:flex items-center gap-1">
-            {[...navigationLinks, ...(adminLink ? [adminLink] : [])].map((link) => {
+            {[...primaryNavigationLinks, ...(adminLink ? [adminLink] : [])].map((link) => {
               const isActive = pathname === link.href;
               const Icon = link.icon;
               return (
@@ -202,7 +203,7 @@ export function Navbar() {
 
               <div className="flex-1 py-8 px-4 overflow-y-auto">
                 <nav className="space-y-1">
-                  {[...navigationLinks, ...(adminLink ? [adminLink] : [])].map((link) => {
+                  {[...primaryNavigationLinks, ...(adminLink ? [adminLink] : [])].map((link) => {
                     const isActive = pathname === link.href;
                     const Icon = link.icon;
                     return (

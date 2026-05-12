@@ -47,7 +47,8 @@ export function Sidebar() {
   const profile = account?.status === "ready" || account?.status === "disabled" ? account.profile : null;
   const enabledModules: ModuleKey[] = account?.status === "ready" || account?.status === "disabled" ? account.enabledModules : [];
   const moduleLinks = profile ? getAllowedModules(profile.role, enabledModules) : [];
-  const links = profile?.role === "admin" ? [...moduleLinks, ADMIN_MODULE] : moduleLinks;
+  const primaryModuleLinks = moduleLinks.filter((link) => link.key !== "notifications");
+  const links = profile?.role === "admin" ? [...primaryModuleLinks, ADMIN_MODULE] : primaryModuleLinks;
 
   return (
     <motion.aside 

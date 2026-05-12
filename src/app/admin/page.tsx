@@ -3,29 +3,21 @@
 import { motion } from "framer-motion";
 import {
   Activity,
-  Copy,
+  Lock,
   Mail,
   Power,
   Search,
   ShieldCheck,
   ToggleLeft,
+  Trash2,
   UserPlus,
   Users,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { MODULES, type AppProfile, type AppRole, type ModuleKey } from "@/lib/access-control";
-import { createInviteToken, writeAdminAuditLog } from "@/lib/supabase/admin";
+import { writeAdminAuditLog } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/client";
-
-type Invite = {
-  id: string;
-  email: string;
-  token: string;
-  status: "pending" | "accepted" | "revoked" | "expired";
-  expires_at: string;
-  created_at: string;
-};
 
 type ModuleAccessRow = {
   user_id: string;
@@ -42,43 +34,48 @@ type AuditLog = {
   created_at: string;
 };
 
-const buildInviteUrl = (token: string) => {
-  if (typeof window === "undefined") return `/register?invite=${token}`;
-  return `${window.location.origin}/register?invite=${token}`;
+const emptyAccountForm = {
+  email: "",
+  password: "",
+  fullName: "",
+  role: "staff" as AppRole,
 };
 
 export default function AdminPage() {
   const [profiles, setProfiles] = useState<AppProfile[]>([]);
   const [accessRows, setAccessRows] = useState<ModuleAccessRow[]>([]);
-  const [invites, setInvites] = useState<Invite[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [inviteEmail, setInviteEmail] = useState("");
+  const [accountForm, setAccountForm] = useState(emptyAccountForm);
+  const [selectedModules, setSelectedModules] = useState<ModuleKey[]>([]);
+  const [currentUserId, setCurrentUserId] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isCreatingAccount, setIsCreatingAccount] = useState(false);
+  const [deletingAccountId, setDeletingAccountId] = useState("");
 
   const loadAdminData = async () => {
     const supabase = createClient();
     if (!supabase) return;
 
     setIsLoading(true);
-    const [profilesResult, accessResult, invitesResult, auditResult] = await Promise.all([
+    const [{ data: userData }, profilesResult, accessResult, auditResult] = await Promise.all([
+      supabase.auth.getUser(),
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("user_module_access").select("*"),
-      supabase.from("staff_invites").select("id,email,token,status,expires_at,created_at").order("created_at", { ascending: false }),
       supabase.from("admin_audit_logs").select("id,action,target_type,target_id,details,created_at").order("created_at", { ascending: false }).limit(12),
     ]);
 
     setIsLoading(false);
-    if (profilesResult.error || accessResult.error || invitesResult.error || auditResult.error) {
+    if (profilesResult.error || accessResult.error || auditResult.error) {
       setError("Could not load admin data. Check Supabase schema and RLS policies.");
       return;
     }
 
+    setCurrentUserId(userData.user?.id || "");
     setProfiles((profilesResult.data || []) as AppProfile[]);
     setAccessRows((accessResult.data || []) as ModuleAccessRow[]);
-    setInvites((invitesResult.data || []) as Invite[]);
     setAuditLogs((auditResult.data || []) as AuditLog[]);
   };
 
@@ -102,32 +99,56 @@ export default function AdminPage() {
     return accessRows.some((row) => row.user_id === userId && row.module_key === moduleKey && row.enabled);
   };
 
-  const handleCreateInvite = async () => {
-    const email = inviteEmail.trim().toLowerCase();
-    if (!email) return;
-
+  const getAccessToken = async () => {
     const supabase = createClient();
-    if (!supabase) return;
+    if (!supabase) return null;
 
-    setError("");
-    setNotice("");
-    const token = createInviteToken();
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-    const { error: insertError } = await supabase.from("staff_invites").insert({
-      email,
-      token,
-      status: "pending",
-      expires_at: expiresAt,
-    });
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token || null;
+  };
 
-    if (insertError) {
-      setError(insertError.message);
+  const toggleSelectedModule = (moduleKey: ModuleKey) => {
+    setSelectedModules((current) =>
+      current.includes(moduleKey)
+        ? current.filter((key) => key !== moduleKey)
+        : [...current, moduleKey]
+    );
+  };
+
+  const handleCreateAccount = async () => {
+    const token = await getAccessToken();
+    if (!token) {
+      setError("Admin session expired. Sign in again.");
       return;
     }
 
-    await writeAdminAuditLog("invite_created", "staff_invite", email, { email });
-    setInviteEmail("");
-    setNotice(`Invite created for ${email}. Share the invite link from Pending Invites.`);
+    setError("");
+    setNotice("");
+    setIsCreatingAccount(true);
+
+    const response = await fetch("/api/admin/accounts", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        ...accountForm,
+        enabledModules: accountForm.role === "staff" ? selectedModules : [],
+      }),
+    });
+
+    const result = await response.json();
+    setIsCreatingAccount(false);
+
+    if (!response.ok) {
+      setError(result.message || "Could not create account.");
+      return;
+    }
+
+    setAccountForm(emptyAccountForm);
+    setSelectedModules([]);
+    setNotice(`Account created for ${accountForm.email.trim().toLowerCase()}.`);
     await loadAdminData();
   };
 
@@ -197,9 +218,42 @@ export default function AdminPage() {
     await loadAdminData();
   };
 
-  const handleCopyInvite = async (token: string) => {
-    await navigator.clipboard.writeText(buildInviteUrl(token));
-    setNotice("Invite link copied.");
+  const handleDeleteAccount = async (profile: AppProfile) => {
+    if (profile.id === currentUserId) {
+      setError("You cannot delete your own admin account.");
+      return;
+    }
+
+    const confirmed = window.confirm(`Delete ${profile.email}? This removes the login and account record.`);
+    if (!confirmed) return;
+
+    const token = await getAccessToken();
+    if (!token) {
+      setError("Admin session expired. Sign in again.");
+      return;
+    }
+
+    setError("");
+    setNotice("");
+    setDeletingAccountId(profile.id);
+
+    const response = await fetch(`/api/admin/accounts/${profile.id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const result = await response.json();
+    setDeletingAccountId("");
+
+    if (!response.ok) {
+      setError(result.message || "Could not delete account.");
+      return;
+    }
+
+    setNotice(`Account deleted for ${profile.email}.`);
+    await loadAdminData();
   };
 
   return (
@@ -214,7 +268,7 @@ export default function AdminPage() {
             Staff <span className="text-cyan-500">Access</span>
           </h1>
           <p className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-            Invite accounts, enable modules, and audit operational access.
+            Create accounts, enable modules, and audit operational access.
           </p>
         </div>
 
@@ -228,8 +282,8 @@ export default function AdminPage() {
             <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Admins</p>
           </div>
           <div className="saas-card p-4 rounded-none border-l-4 border-l-amber-500">
-            <p className="text-2xl font-black outfit text-slate-900 dark:text-white">{invites.filter((invite) => invite.status === "pending").length}</p>
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Invites</p>
+            <p className="text-2xl font-black outfit text-slate-900 dark:text-white">{profiles.filter((profile) => profile.role === "staff").length}</p>
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Staff</p>
           </div>
         </div>
       </div>
@@ -244,55 +298,77 @@ export default function AdminPage() {
         <div className="space-y-6">
           <section className="saas-card p-6 rounded-none border-t-4 border-t-cyan-500">
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">Invite Staff</h2>
+              <h2 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">Create Account</h2>
               <UserPlus className="h-5 w-5 text-cyan-600" />
             </div>
             <div className="space-y-3">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Full Name</label>
+              <input
+                value={accountForm.fullName}
+                onChange={(event) => setAccountForm((current) => ({ ...current, fullName: event.target.value }))}
+                placeholder="Team Member"
+                className="w-full border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:border-cyan-500 dark:border-slate-800 dark:bg-black dark:text-white"
+              />
+
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Email Address</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
-                  value={inviteEmail}
-                  onChange={(event) => setInviteEmail(event.target.value)}
+                  value={accountForm.email}
+                  onChange={(event) => setAccountForm((current) => ({ ...current, email: event.target.value }))}
                   placeholder="staff@company.com"
                   className="w-full border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm font-bold text-slate-800 outline-none focus:border-cyan-500 dark:border-slate-800 dark:bg-black dark:text-white"
                 />
               </div>
+
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="password"
+                  value={accountForm.password}
+                  onChange={(event) => setAccountForm((current) => ({ ...current, password: event.target.value }))}
+                  placeholder="Minimum 6 characters"
+                  className="w-full border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm font-bold text-slate-800 outline-none focus:border-cyan-500 dark:border-slate-800 dark:bg-black dark:text-white"
+                />
+              </div>
+
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Role</label>
+              <select
+                value={accountForm.role}
+                onChange={(event) => setAccountForm((current) => ({ ...current, role: event.target.value as AppRole }))}
+                className="w-full border border-slate-200 bg-white px-4 py-3 text-sm font-black uppercase tracking-widest text-slate-700 outline-none focus:border-cyan-500 dark:border-slate-800 dark:bg-black dark:text-white"
+              >
+                <option value="staff">Staff</option>
+                <option value="admin">Admin</option>
+              </select>
+
+              {accountForm.role === "staff" && (
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  {MODULES.map((module) => {
+                    const Icon = module.icon;
+                    const isSelected = selectedModules.includes(module.key);
+                    return (
+                      <button
+                        key={module.key}
+                        onClick={() => toggleSelectedModule(module.key)}
+                        className={`flex items-center gap-2 border px-3 py-2 text-left transition ${isSelected ? "border-cyan-300 bg-cyan-50 text-cyan-800" : "border-slate-200 bg-white text-slate-500 dark:border-slate-800 dark:bg-black dark:text-zinc-500"}`}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        <span className="truncate text-[9px] font-black uppercase tracking-widest">{module.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
               <button
-                onClick={handleCreateInvite}
+                onClick={handleCreateAccount}
+                disabled={isCreatingAccount}
                 className="w-full bg-slate-950 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-cyan-600 dark:bg-white dark:text-black dark:hover:bg-cyan-500 dark:hover:text-white"
               >
-                Create Invite
+                {isCreatingAccount ? "Creating..." : "Create Account"}
               </button>
-            </div>
-          </section>
-
-          <section className="saas-card p-6 rounded-none">
-            <h2 className="mb-5 text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">Pending Invites</h2>
-            <div className="space-y-3">
-              {invites.slice(0, 8).map((invite) => (
-                <div key={invite.id} className="border border-slate-200 p-3 dark:border-slate-800">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-xs font-black uppercase text-slate-800 dark:text-white">{invite.email}</p>
-                      <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-400">{invite.status}</p>
-                    </div>
-                    {invite.status === "pending" && (
-                      <button
-                        onClick={() => handleCopyInvite(invite.token)}
-                        className="p-2 text-slate-400 transition hover:text-cyan-600"
-                        aria-label="Copy invite link"
-                        title="Copy invite link"
-                      >
-                        <Copy className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {invites.length === 0 && (
-                <p className="py-6 text-center text-xs font-black uppercase tracking-widest text-slate-400">No invites yet.</p>
-              )}
             </div>
           </section>
         </div>
@@ -350,6 +426,14 @@ export default function AdminPage() {
                         >
                           <Power className="h-3.5 w-3.5" />
                           {profile.status === "active" ? "Disable" : "Enable"}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteAccount(profile)}
+                          disabled={profile.id === currentUserId || deletingAccountId === profile.id}
+                          className="inline-flex items-center gap-2 border border-rose-200 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300 dark:border-rose-950 dark:text-rose-400 dark:hover:bg-rose-950/20"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          {deletingAccountId === profile.id ? "Deleting..." : "Delete"}
                         </button>
                       </div>
                     </div>

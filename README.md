@@ -12,9 +12,11 @@ GarageFlow is a Next.js logistics and inventory dashboard backed by Supabase Aut
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_your_key_here
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 ```
 
 You can also use `NEXT_PUBLIC_SUPABASE_ANON_KEY` for older projects, but a publishable key is preferred for new Supabase apps.
+The service-role key is required for the admin page to create and delete Supabase Auth users. Keep it server-side only; never expose it with a `NEXT_PUBLIC_` prefix.
 
 ## Development
 

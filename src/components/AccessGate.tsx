@@ -73,9 +73,6 @@ export function AccessGate({ children }: { children: React.ReactNode }) {
     if (!account) return;
 
     if (isPublicPath) {
-      if (account.status === "ready" && pathname === "/login") {
-        router.replace(getDefaultLanding(account.profile.role, account.enabledModules));
-      }
       return;
     }
 

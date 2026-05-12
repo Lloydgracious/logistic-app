@@ -121,7 +121,7 @@ export default function LoginPage() {
           </form>
 
           <p className="text-center mt-8 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 font-medium">
-            New staff accounts are invite-only. Ask an admin for your registration link.
+            Accounts are created by an admin. Use the email and password assigned to you.
           </p>
         </div>
       </motion.div>

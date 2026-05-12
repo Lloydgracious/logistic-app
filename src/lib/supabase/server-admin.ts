@@ -25,10 +25,15 @@ export function createAdminClient() {
 export async function getActiveAdminProfile(request: NextRequest) {
   const supabase = createAdminClient();
   if (!supabase) {
+    const missing = [
+      !supabaseUrl && "NEXT_PUBLIC_SUPABASE_URL",
+      !serviceRoleKey && "SUPABASE_SERVICE_ROLE_KEY",
+    ].filter(Boolean).join(" and ");
+
     return {
       supabase: null,
       profile: null,
-      error: "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.",
+      error: `Missing ${missing}. Add it to your environment variables and restart the app.`,
     };
   }
 

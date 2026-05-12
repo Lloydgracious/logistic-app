@@ -22,7 +22,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [isHovered, setIsHovered] = useState(false);
 
-  if (['/', '/login', '/register'].includes(pathname)) {
+  if (['/', '/login', '/invite', '/register'].includes(pathname)) {
     return null;
   }
 

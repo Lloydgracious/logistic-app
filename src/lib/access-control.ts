@@ -60,7 +60,7 @@ export const ADMIN_MODULE = {
   icon: FileText,
 };
 
-export const PUBLIC_PATHS = new Set(["/", "/login", "/register"]);
+export const PUBLIC_PATHS = new Set(["/", "/login", "/invite", "/register"]);
 
 export function getModuleForPath(pathname: string): ModuleKey | "admin" | "profile" | null {
   if (pathname.startsWith("/admin")) return "admin";

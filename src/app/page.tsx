@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 export default function WelcomePage() {
   return (
@@ -35,12 +35,9 @@ export default function WelcomePage() {
             Everything in one easy dashboard.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-6 w-full sm:w-auto">
-            <Link href="/register" className="group px-12 py-5 bg-slate-950 dark:bg-white text-white dark:text-black font-black uppercase tracking-widest text-[11px] flex items-center justify-center gap-3 shadow-[8px_8px_0px_0px_rgba(225,29,72,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all">
-              Create Account <ArrowUpRight className="w-4 h-4" />
-            </Link>
-            <Link href="/login" className="px-12 py-5 border-2 border-slate-950 dark:border-white text-slate-900 dark:text-white font-black uppercase tracking-widest text-[11px] text-center hover:bg-slate-100 dark:hover:bg-zinc-900 transition-all">
-              Sign In
+          <div className="flex w-full sm:w-auto">
+            <Link href="/login" className="group px-12 py-5 bg-slate-950 dark:bg-white text-white dark:text-black font-black uppercase tracking-widest text-[11px] flex items-center justify-center gap-3 shadow-[8px_8px_0px_0px_rgba(225,29,72,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all">
+              Sign In <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
 

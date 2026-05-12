@@ -71,7 +71,7 @@ export function Navbar() {
     router.refresh();
   };
 
-  if (['/', '/login', '/register'].includes(pathname)) {
+  if (['/', '/login', '/invite', '/register'].includes(pathname)) {
     return null;
   }
 

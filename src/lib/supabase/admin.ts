@@ -55,9 +55,27 @@ async function createBootstrapAdmin(user: User) {
   return data as AppProfile | null;
 }
 
-async function createStaffProfile(user: User) {
+async function createStaffProfile(user: User, inviteToken?: string) {
   const supabase = createClient();
   if (!supabase || !user.email) return null;
+
+  let inviteQuery = supabase
+    .from("staff_invites")
+    .select("id,email,token,status,expires_at")
+    .eq("email", user.email.toLowerCase())
+    .eq("status", "pending")
+    .gt("expires_at", new Date().toISOString());
+
+  if (inviteToken) {
+    inviteQuery = inviteQuery.eq("token", inviteToken);
+  }
+
+  const { data: invite, error: inviteError } = await inviteQuery
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (inviteError || !invite) return null;
 
   const { data, error } = await supabase
     .from("profiles")
@@ -76,8 +94,7 @@ async function createStaffProfile(user: User) {
   await supabase
     .from("staff_invites")
     .update({ status: "accepted", accepted_at: new Date().toISOString() })
-    .eq("email", user.email.toLowerCase())
-    .eq("status", "pending");
+    .eq("id", invite.id);
 
   return data as AppProfile | null;
 }
@@ -100,7 +117,7 @@ async function fetchEnabledModules(profile: AppProfile) {
     .filter((moduleKey): moduleKey is ModuleKey => MODULES.some((module) => module.key === moduleKey));
 }
 
-export async function getCurrentAccount(): Promise<CurrentAccount> {
+export async function getCurrentAccount(inviteToken?: string): Promise<CurrentAccount> {
   const supabase = createClient();
   if (!supabase) {
     return { status: "signed_out", user: null, profile: null, enabledModules: [] };
@@ -119,7 +136,7 @@ export async function getCurrentAccount(): Promise<CurrentAccount> {
   }
 
   if (!profile) {
-    profile = await createStaffProfile(user);
+    profile = await createStaffProfile(user, inviteToken || String(user.user_metadata?.invite_token || ""));
   }
 
   if (!profile) {

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { ArrowRight, Mail, Lock } from "lucide-react";
@@ -47,7 +46,7 @@ export default function LoginPage() {
       return;
     }
     if (account.status === "pending" || account.status === "signed_out") {
-      setFormError("This login is not connected to an active account yet. Please register first or ask an admin to check access.");
+      setFormError("This login is not connected to an active account yet. Ask an admin to send you an invite.");
       return;
     }
 
@@ -94,7 +93,7 @@ export default function LoginPage() {
             <div>
               <div className="flex justify-between items-center mb-1.5">
                 <label className="block text-sm font-bold text-slate-700 dark:text-slate-200" htmlFor="password">Password</label>
-                <Link href="#" className="text-xs font-bold text-primary hover:text-primaryHover transition-colors">Forgot password?</Link>
+                <span className="text-xs font-bold text-slate-400">Invite only</span>
               </div>
               <div className="relative">
                 <Lock className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
@@ -119,10 +118,6 @@ export default function LoginPage() {
               {isLoading ? "Signing In..." : "Sign In"} <ArrowRight className="w-4 h-4" />
             </button>
           </form>
-
-          <p className="text-center mt-8 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 font-medium">
-            Need an account? <Link href="/register" className="font-bold text-primary hover:text-primaryHover transition-colors">Create one here</Link>.
-          </p>
         </div>
       </motion.div>
     </div>

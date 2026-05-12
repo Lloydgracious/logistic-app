@@ -7,8 +7,10 @@ import {
   Mail,
   Power,
   Search,
+  Send,
   ShieldCheck,
   ToggleLeft,
+  Trash,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -43,8 +45,8 @@ type AuditLog = {
 };
 
 const buildInviteUrl = (token: string) => {
-  if (typeof window === "undefined") return `/register?invite=${token}`;
-  return `${window.location.origin}/register?invite=${token}`;
+  if (typeof window === "undefined") return `/invite?token=${token}`;
+  return `${window.location.origin}/invite?token=${token}`;
 };
 
 export default function AdminPage() {
@@ -57,6 +59,7 @@ export default function AdminPage() {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isSendingInvite, setIsSendingInvite] = useState(false);
 
   const loadAdminData = async () => {
     const supabase = createClient();
@@ -95,6 +98,7 @@ export default function AdminPage() {
       profile.role.toLowerCase().includes(query)
     );
   }, [profiles, searchTerm]);
+  const pendingInvites = useMemo(() => invites.filter((invite) => invite.status === "pending"), [invites]);
 
   const getModuleEnabled = (userId: string, moduleKey: ModuleKey) => {
     const profile = profiles.find((item) => item.id === userId);
@@ -111,24 +115,49 @@ export default function AdminPage() {
 
     setError("");
     setNotice("");
+    setIsSendingInvite(true);
     const token = createInviteToken();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: userResult } = await supabase.auth.getUser();
     const { error: insertError } = await supabase.from("staff_invites").insert({
       email,
       token,
       status: "pending",
       expires_at: expiresAt,
+      invited_by: userResult.user?.id,
     });
 
     if (insertError) {
       setError(insertError.message);
+      setIsSendingInvite(false);
       return;
     }
 
-    await writeAdminAuditLog("invite_created", "staff_invite", email, { email });
+    const inviteUrl = buildInviteUrl(token);
+    const { error: emailError } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: inviteUrl,
+        shouldCreateUser: true,
+        data: {
+          invite_token: token,
+        },
+      },
+    });
+
+    if (emailError) {
+      await supabase.from("staff_invites").delete().eq("token", token);
+      setError(emailError.message);
+      await loadAdminData();
+      setIsSendingInvite(false);
+      return;
+    }
+
+    await writeAdminAuditLog("invite_created", "staff_invite", email, { email, sent: true });
     setInviteEmail("");
-    setNotice(`Invite created for ${email}. Share the invite link from Pending Invites.`);
+    setNotice(`Invite email sent to ${email}.`);
     await loadAdminData();
+    setIsSendingInvite(false);
   };
 
   const handleToggleModule = async (profile: AppProfile, moduleKey: ModuleKey) => {
@@ -202,6 +231,30 @@ export default function AdminPage() {
     setNotice("Invite link copied.");
   };
 
+  const handleDeleteInvite = async (invite: Invite) => {
+    if (!window.confirm(`Delete pending invite for ${invite.email}?`)) return;
+
+    const supabase = createClient();
+    if (!supabase) return;
+
+    setError("");
+    setNotice("");
+    const { error: deleteError } = await supabase
+      .from("staff_invites")
+      .delete()
+      .eq("id", invite.id)
+      .eq("status", "pending");
+
+    if (deleteError) {
+      setError(deleteError.message);
+      return;
+    }
+
+    await writeAdminAuditLog("invite_deleted", "staff_invite", invite.email, { email: invite.email });
+    setNotice(`Pending invite deleted for ${invite.email}.`);
+    await loadAdminData();
+  };
+
   return (
     <div className="mx-auto max-w-7xl space-y-6 pb-20 animate-in fade-in slide-in-from-bottom-8 duration-500">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -228,7 +281,7 @@ export default function AdminPage() {
             <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Admins</p>
           </div>
           <div className="saas-card p-4 rounded-none border-l-4 border-l-amber-500">
-            <p className="text-2xl font-black outfit text-slate-900 dark:text-white">{invites.filter((invite) => invite.status === "pending").length}</p>
+            <p className="text-2xl font-black outfit text-slate-900 dark:text-white">{pendingInvites.length}</p>
             <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Invites</p>
           </div>
         </div>
@@ -260,9 +313,13 @@ export default function AdminPage() {
               </div>
               <button
                 onClick={handleCreateInvite}
-                className="w-full bg-slate-950 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-cyan-600 dark:bg-white dark:text-black dark:hover:bg-cyan-500 dark:hover:text-white"
+                disabled={isSendingInvite}
+                className="w-full bg-slate-950 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-cyan-600 disabled:opacity-60 dark:bg-white dark:text-black dark:hover:bg-cyan-500 dark:hover:text-white"
               >
-                Create Invite
+                <span className="inline-flex items-center justify-center gap-2">
+                  <Send className="h-3.5 w-3.5" />
+                  {isSendingInvite ? "Sending Invite..." : "Send Invite Email"}
+                </span>
               </button>
             </div>
           </section>
@@ -270,14 +327,14 @@ export default function AdminPage() {
           <section className="saas-card p-6 rounded-none">
             <h2 className="mb-5 text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">Pending Invites</h2>
             <div className="space-y-3">
-              {invites.slice(0, 8).map((invite) => (
+              {pendingInvites.slice(0, 8).map((invite) => (
                 <div key={invite.id} className="border border-slate-200 p-3 dark:border-slate-800">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate text-xs font-black uppercase text-slate-800 dark:text-white">{invite.email}</p>
-                      <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-400">{invite.status}</p>
+                      <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-400">Pending / Expires {new Date(invite.expires_at).toLocaleDateString()}</p>
                     </div>
-                    {invite.status === "pending" && (
+                    <div className="flex shrink-0 items-center gap-1">
                       <button
                         onClick={() => handleCopyInvite(invite.token)}
                         className="p-2 text-slate-400 transition hover:text-cyan-600"
@@ -286,12 +343,20 @@ export default function AdminPage() {
                       >
                         <Copy className="h-4 w-4" />
                       </button>
-                    )}
+                      <button
+                        onClick={() => handleDeleteInvite(invite)}
+                        className="p-2 text-slate-400 transition hover:text-rose-600"
+                        aria-label="Delete pending invite"
+                        title="Delete pending invite"
+                      >
+                        <Trash className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
-              {invites.length === 0 && (
-                <p className="py-6 text-center text-xs font-black uppercase tracking-widest text-slate-400">No invites yet.</p>
+              {pendingInvites.length === 0 && (
+                <p className="py-6 text-center text-xs font-black uppercase tracking-widest text-slate-400">No pending invites.</p>
               )}
             </div>
           </section>

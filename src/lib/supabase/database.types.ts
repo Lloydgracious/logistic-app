@@ -21,6 +21,28 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["activity_logs"]["Insert"]>;
         Relationships: [];
       };
+      admin_audit_logs: {
+        Row: {
+          action: string;
+          actor_id: string | null;
+          created_at: string;
+          details: Json;
+          id: string;
+          target_id: string;
+          target_type: string;
+        };
+        Insert: {
+          action: string;
+          actor_id?: string | null;
+          created_at?: string;
+          details?: Json;
+          id?: string;
+          target_id: string;
+          target_type: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["admin_audit_logs"]["Insert"]>;
+        Relationships: [];
+      };
       container_stock: {
         Row: {
           car_number: string;
@@ -177,6 +199,84 @@ export type Database = {
           status: "PENDING" | "PREPARING" | "ON_THE_WAY" | "DELIVERED";
         };
         Update: Partial<Database["public"]["Tables"]["orders"]["Insert"]>;
+        Relationships: [];
+      };
+      permission_modules: {
+        Row: {
+          label: string;
+          module_key: string;
+          sort_order: number;
+        };
+        Insert: {
+          label: string;
+          module_key: string;
+          sort_order?: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["permission_modules"]["Insert"]>;
+        Relationships: [];
+      };
+      profiles: {
+        Row: {
+          created_at: string;
+          email: string;
+          full_name: string | null;
+          id: string;
+          role: "admin" | "staff";
+          status: "active" | "disabled";
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          email: string;
+          full_name?: string | null;
+          id: string;
+          role?: "admin" | "staff";
+          status?: "active" | "disabled";
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
+        Relationships: [];
+      };
+      staff_invites: {
+        Row: {
+          accepted_at: string | null;
+          created_at: string;
+          email: string;
+          expires_at: string;
+          id: string;
+          invited_by: string | null;
+          status: "pending" | "accepted" | "revoked" | "expired";
+          token: string;
+        };
+        Insert: {
+          accepted_at?: string | null;
+          created_at?: string;
+          email: string;
+          expires_at?: string;
+          id?: string;
+          invited_by?: string | null;
+          status?: "pending" | "accepted" | "revoked" | "expired";
+          token: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["staff_invites"]["Insert"]>;
+        Relationships: [];
+      };
+      user_module_access: {
+        Row: {
+          created_at: string;
+          enabled: boolean;
+          module_key: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          enabled?: boolean;
+          module_key: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["user_module_access"]["Insert"]>;
         Relationships: [];
       };
     };

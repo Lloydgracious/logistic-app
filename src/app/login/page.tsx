@@ -8,6 +8,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
+import { getCurrentAccount } from "@/lib/supabase/admin";
+import { getDefaultLanding } from "@/lib/access-control";
 import { useStore } from "@/lib/store";
 
 export default function LoginPage() {
@@ -39,8 +41,18 @@ export default function LoginPage() {
       return;
     }
 
+    const account = await getCurrentAccount();
+    if (account.status === "disabled") {
+      setFormError("This account is disabled. Ask an admin to reactivate it.");
+      return;
+    }
+    if (account.status === "pending" || account.status === "signed_out") {
+      setFormError("This login is not connected to an active staff invite yet.");
+      return;
+    }
+
     await useStore.getState().loadRemoteData();
-    router.push('/dashboard');
+    router.push(getDefaultLanding(account.profile.role, account.enabledModules));
     router.refresh();
   };
 
@@ -109,7 +121,7 @@ export default function LoginPage() {
           </form>
 
           <p className="text-center mt-8 text-sm text-slate-500 dark:text-slate-400 dark:text-slate-500 font-medium">
-            Don&apos;t have an account? <Link href="/register" className="font-bold text-primary hover:text-primaryHover transition-colors">Create one here</Link>
+            New staff accounts are invite-only. Ask an admin for your registration link.
           </p>
         </div>
       </motion.div>

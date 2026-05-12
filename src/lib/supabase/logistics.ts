@@ -30,6 +30,14 @@ type TableName =
   | "order_items"
   | "orders";
 
+type SyncScope =
+  | "all"
+  | "incoming"
+  | "inventory"
+  | "orders"
+  | "customers"
+  | "logs";
+
 const DEFAULT_SECTION_ID = "section-general";
 
 const resolveSection = (sectionId: string | undefined | null, sections: InventorySection[]) => {
@@ -240,8 +248,155 @@ async function upsertRows<TableInsert>(tableName: TableName, rows: TableInsert[]
   throwIfError(error);
 }
 
-export async function saveGarageSnapshot(snapshot: GarageSnapshot) {
+export async function saveGarageSnapshot(snapshot: GarageSnapshot, scope: SyncScope = "all") {
   if (!isSupabaseConfigured()) return;
+
+  if (scope === "customers") {
+    await upsertRows("customers", snapshot.customers.map((customer) => ({
+      id: customer.id,
+      name: customer.name,
+      phone: customer.phone || null,
+      address: customer.address || null,
+      note: customer.note || null,
+      created_at: customer.createdAt,
+      updated_at: customer.updatedAt,
+    })));
+    return;
+  }
+
+  if (scope === "logs") {
+    await upsertRows("activity_logs", snapshot.logs.map((log) => ({
+      id: log.id,
+      type: log.type,
+      message: log.message,
+      timestamp: log.timestamp,
+      operator: log.operator || null,
+    })));
+    return;
+  }
+
+  if (scope === "inventory") {
+    await upsertRows("inventory_sections", snapshot.inventorySections.map((section) => ({
+      id: section.id,
+      title: section.title,
+      created_at: section.createdAt,
+    })));
+
+    await upsertRows("container_stock", snapshot.containerStock.map((row) => ({
+      id: row.id,
+      container_id: row.containerId,
+      container_number: row.containerNumber,
+      car_number: row.carNumber,
+      supplier_name: row.supplierName,
+      inventory_section_id: row.inventorySectionId || null,
+      product_name: row.productName,
+      initial_quantity: row.initialQuantity,
+      remaining_quantity: row.remainingQuantity,
+      unit: row.unit || null,
+      received_at: row.receivedAt,
+      updated_at: row.updatedAt,
+    })));
+    return;
+  }
+
+  if (scope === "incoming") {
+    await deleteAll("incoming_items");
+
+    await upsertRows("inventory_sections", snapshot.inventorySections.map((section) => ({
+      id: section.id,
+      title: section.title,
+      created_at: section.createdAt,
+    })));
+
+    await upsertRows("incoming_shipments", snapshot.incomingList.map((incoming) => ({
+      id: incoming.id,
+      container_number: incoming.containerNumber,
+      car_number: incoming.carNumber,
+      supplier_name: incoming.supplierName,
+      status: incoming.status,
+      arrival_time: incoming.arrivalTime,
+      duration_hours: incoming.durationHours,
+      note: incoming.note || null,
+    })));
+
+    await upsertRows("incoming_items", snapshot.incomingList.flatMap((incoming) =>
+      incoming.items.map((item) => ({
+        incoming_id: incoming.id,
+        name: item.name,
+        quantity: item.quantity,
+        unit: item.unit || null,
+        container_number: item.containerNumber || incoming.containerNumber || null,
+        inventory_section_id: item.inventorySectionId || null,
+      }))
+    ));
+
+    await upsertRows("container_stock", snapshot.containerStock.map((row) => ({
+      id: row.id,
+      container_id: row.containerId,
+      container_number: row.containerNumber,
+      car_number: row.carNumber,
+      supplier_name: row.supplierName,
+      inventory_section_id: row.inventorySectionId || null,
+      product_name: row.productName,
+      initial_quantity: row.initialQuantity,
+      remaining_quantity: row.remainingQuantity,
+      unit: row.unit || null,
+      received_at: row.receivedAt,
+      updated_at: row.updatedAt,
+    })));
+    return;
+  }
+
+  if (scope === "orders") {
+    await deleteAll("order_items");
+
+    await upsertRows("customers", snapshot.customers.map((customer) => ({
+      id: customer.id,
+      name: customer.name,
+      phone: customer.phone || null,
+      address: customer.address || null,
+      note: customer.note || null,
+      created_at: customer.createdAt,
+      updated_at: customer.updatedAt,
+    })));
+
+    await upsertRows("orders", snapshot.orders.map((order) => ({
+      id: order.id,
+      customer_name: order.customerName,
+      car_number: order.carNumber,
+      status: order.status,
+      order_time: order.orderTime,
+      final_date: order.finalDate,
+      customer_note: order.customerNote || null,
+    })));
+
+    await upsertRows("order_items", snapshot.orders.flatMap((order) =>
+      order.items.map((item) => ({
+        order_id: order.id,
+        name: item.name,
+        quantity: item.quantity,
+        unit: item.unit || null,
+        container_id: item.containerId || null,
+        container_number: item.containerNumber || null,
+      }))
+    ));
+
+    await upsertRows("container_stock", snapshot.containerStock.map((row) => ({
+      id: row.id,
+      container_id: row.containerId,
+      container_number: row.containerNumber,
+      car_number: row.carNumber,
+      supplier_name: row.supplierName,
+      inventory_section_id: row.inventorySectionId || null,
+      product_name: row.productName,
+      initial_quantity: row.initialQuantity,
+      remaining_quantity: row.remainingQuantity,
+      unit: row.unit || null,
+      received_at: row.receivedAt,
+      updated_at: row.updatedAt,
+    })));
+    return;
+  }
 
   await Promise.all([
     deleteAll("incoming_items"),

@@ -5,9 +5,11 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { ArrowRight, Mail, Lock, User, Building } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
+import { getDefaultLanding } from "@/lib/access-control";
+import { getCurrentAccount } from "@/lib/supabase/admin";
 import { useStore } from "@/lib/store";
 
 const SIGNUP_EMAIL_COOLDOWN_MS = 60 * 1000;
@@ -41,6 +43,12 @@ export default function RegisterPage() {
   const [notice, setNotice] = useState("");
   const [pendingConfirmationEmail, setPendingConfirmationEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [inviteToken, setInviteToken] = useState("");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setInviteToken(new URLSearchParams(window.location.search).get("invite") || "");
+  }, []);
 
   const handleResendConfirmation = async () => {
     const email = pendingConfirmationEmail.trim().toLowerCase();
@@ -92,6 +100,11 @@ export default function RegisterPage() {
     const password = String(formData.get("password") || "");
     const cooldownSeconds = getRemainingSignupCooldownSeconds(email);
 
+    if (!inviteToken) {
+      setFormError("Staff registration is invite-only. Ask an admin for an invite link.");
+      return;
+    }
+
     if (cooldownSeconds > 0) {
       setNotice(`A confirmation email was just sent. Please wait ${cooldownSeconds} seconds before trying again.`);
       return;
@@ -115,6 +128,7 @@ export default function RegisterPage() {
           first_name: firstName,
           last_name: lastName,
           company,
+          invite_token: inviteToken,
         },
       },
     });
@@ -136,12 +150,18 @@ export default function RegisterPage() {
     if (!data.session) {
       markSignupEmailSent(email);
       setPendingConfirmationEmail(email);
-      setNotice("Account created. Check your email to confirm your login. If nothing arrives, this email may already have an account, or Supabase email sending may need SMTP settings.");
+      setNotice("Account created. Check your email to confirm your login, then sign in with this same email.");
+      return;
+    }
+
+    const account = await getCurrentAccount();
+    if (account.status !== "ready") {
+      setFormError("Account created, but this email does not match an active invite yet.");
       return;
     }
 
     await useStore.getState().loadRemoteData();
-    router.push('/dashboard');
+    router.push(getDefaultLanding(account.profile.role, account.enabledModules));
     router.refresh();
   };
 
@@ -160,9 +180,15 @@ export default function RegisterPage() {
             <div className="mx-auto mb-5 inline-flex bg-white border border-slate-200 px-3 py-2 shadow-sm">
               <Image src="/kt-logistic-logo.jpg" alt="KT Logistic & Trading" width={842} height={595} className="h-24 w-auto object-contain" priority />
             </div>
-            <h1 className="text-2xl font-black text-slate-900 outfit tracking-tight">Create an Account</h1>
-            <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm mt-1 font-medium">Join KT Logistic & Trading and organize your fleet.</p>
+            <h1 className="text-2xl font-black text-slate-900 outfit tracking-tight">Accept Staff Invite</h1>
+            <p className="text-slate-500 dark:text-slate-400 dark:text-slate-500 text-sm mt-1 font-medium">Create your KT Logistic account from an admin invite.</p>
           </div>
+
+          {!inviteToken && (
+            <div className="mb-5 border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-black uppercase tracking-wider text-amber-700">
+              Staff registration is invite-only. Use the invite link shared by an admin.
+            </div>
+          )}
 
           <form onSubmit={handleRegister} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -263,7 +289,7 @@ export default function RegisterPage() {
               </div>
             )}
 
-            <button type="submit" disabled={isLoading} className="w-full py-3 bg-primary text-white font-bold rounded-lg shadow-md hover:shadow-lg hover:bg-primaryHover transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-60">
+            <button type="submit" disabled={isLoading || !inviteToken} className="w-full py-3 bg-primary text-white font-bold rounded-lg shadow-md hover:shadow-lg hover:bg-primaryHover transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-60">
               {isLoading ? "Creating..." : "Create Account"} <ArrowRight className="w-4 h-4" />
             </button>
           </form>

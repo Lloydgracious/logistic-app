@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Search, LayoutDashboard, Truck, ShoppingCart, Package, Moon, Sun, ScrollText, Receipt, Menu, X, Users, LogOut } from "lucide-react";
+import { Bell, Search, Moon, Sun, Menu, X, LogOut, ShieldCheck } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import { useState, useEffect } from "react";
@@ -8,22 +8,15 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
-
-const links = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Incoming", href: "/incoming", icon: Truck },
-  { name: "Orders", href: "/orders", icon: ShoppingCart },
-  { name: "Customers", href: "/customers", icon: Users },
-  { name: "Inventory", href: "/inventory", icon: Package },
-  { name: "Logs", href: "/logs", icon: ScrollText },
-  { name: "Billing", href: "/invoices", icon: Receipt },
-];
+import { ADMIN_MODULE, getAllowedModules, type ModuleKey } from "@/lib/access-control";
+import { getCurrentAccount, type CurrentAccount } from "@/lib/supabase/admin";
 
 export function Navbar() {
   const pathname = usePathname();
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [account, setAccount] = useState<CurrentAccount | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -32,6 +25,31 @@ export function Navbar() {
     }
     // Close mobile menu on route change
     setIsMobileMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadAccount = async () => {
+      const nextAccount = await getCurrentAccount();
+      if (isMounted) setAccount(nextAccount);
+    };
+
+    void loadAccount();
+
+    const supabase = createClient();
+    if (!supabase) return () => {
+      isMounted = false;
+    };
+
+    const { data } = supabase.auth.onAuthStateChange(() => {
+      void loadAccount();
+    });
+
+    return () => {
+      isMounted = false;
+      data.subscription.unsubscribe();
+    };
   }, [pathname]);
 
   const toggleTheme = () => {
@@ -57,6 +75,12 @@ export function Navbar() {
     return null;
   }
 
+  const profile = account?.status === "ready" || account?.status === "disabled" ? account.profile : null;
+  const enabledModules: ModuleKey[] = account?.status === "ready" || account?.status === "disabled" ? account.enabledModules : [];
+  const navigationLinks = profile ? getAllowedModules(profile.role, enabledModules) : [];
+  const adminLink = profile?.role === "admin" ? ADMIN_MODULE : null;
+  const canOpenNotifications = profile?.role === "admin" || enabledModules.includes("notifications");
+
   return (
     <>
       <header 
@@ -77,11 +101,11 @@ export function Navbar() {
           </Link>
 
           <nav className="hidden xl:flex items-center gap-1">
-            {links.map((link) => {
+            {[...navigationLinks, ...(adminLink ? [adminLink] : [])].map((link) => {
               const isActive = pathname === link.href;
               const Icon = link.icon;
               return (
-                <Link key={link.name} href={link.href} className={cn(
+                <Link key={link.label} href={link.href} className={cn(
                   "relative px-4 py-2 flex items-center gap-2 group transition-all border-b-2 uppercase tracking-widest",
                   isActive ? "text-rose-600 border-rose-600 bg-rose-50/50" : "text-slate-500 dark:text-zinc-500 border-transparent hover:text-slate-900 dark:hover:text-white"
                 )}>
@@ -89,7 +113,7 @@ export function Navbar() {
                     "w-4 h-4 z-10 transition-colors",
                     isActive ? "text-rose-600" : "text-slate-400 group-hover:text-rose-500"
                   )} />
-                  <span className="text-[11px] font-black z-10">{link.name}</span>
+                  <span className="text-[11px] font-black z-10">{link.label}</span>
                 </Link>
               );
             })}
@@ -122,10 +146,18 @@ export function Navbar() {
             {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
 
-          <Link href="/notifications" className="hidden sm:flex relative w-9 h-9 border border-transparent hover:border-slate-200 dark:hover:border-slate-800 flex items-center justify-center text-slate-500 dark:text-zinc-500 hover:text-cyan-500 transition-colors">
-            <Bell className="w-4 h-4" />
-            <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-rose-500 rounded-none"></span>
-          </Link>
+          {canOpenNotifications && (
+            <Link href="/notifications" className="hidden sm:flex relative w-9 h-9 border border-transparent hover:border-slate-200 dark:hover:border-slate-800 flex items-center justify-center text-slate-500 dark:text-zinc-500 hover:text-cyan-500 transition-colors">
+              <Bell className="w-4 h-4" />
+              <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-rose-500 rounded-none"></span>
+            </Link>
+          )}
+
+          {profile?.role === "admin" && (
+            <Link href="/admin" className="hidden sm:flex w-9 h-9 border border-transparent hover:border-cyan-200 dark:hover:border-cyan-900/50 flex items-center justify-center text-slate-500 dark:text-zinc-500 hover:bg-cyan-50 dark:hover:bg-cyan-950/20 hover:text-cyan-600 transition-colors" aria-label="Admin control center" title="Admin control center">
+              <ShieldCheck className="w-4 h-4" />
+            </Link>
+          )}
 
           <button
             onClick={handleLogout}
@@ -169,12 +201,12 @@ export function Navbar() {
 
               <div className="flex-1 py-8 px-4 overflow-y-auto">
                 <nav className="space-y-1">
-                  {links.map((link) => {
+                  {[...navigationLinks, ...(adminLink ? [adminLink] : [])].map((link) => {
                     const isActive = pathname === link.href;
                     const Icon = link.icon;
                     return (
                       <Link 
-                        key={link.name} 
+                        key={link.label} 
                         href={link.href}
                         className={cn(
                           "flex items-center gap-4 px-4 py-4 font-black uppercase tracking-[0.2em] text-[10px] border-l-4 transition-all",
@@ -184,7 +216,7 @@ export function Navbar() {
                         )}
                       >
                         <Icon className="w-5 h-5" />
-                        {link.name}
+                        {link.label}
                       </Link>
                     );
                   })}

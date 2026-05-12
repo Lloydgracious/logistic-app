@@ -210,6 +210,7 @@ type SnapshotState = Pick<
 >;
 
 type SetGarageState = (partial: Partial<GarageState> | ((state: GarageState) => Partial<GarageState>)) => void;
+type SyncScope = "all" | "incoming" | "inventory" | "orders" | "customers" | "logs";
 
 const getSnapshot = (state: GarageState): SnapshotState => ({
   incomingList: state.incomingList,
@@ -255,14 +256,14 @@ const removePrototypeData = (snapshot: SnapshotState) => {
 
 let syncQueue = Promise.resolve();
 
-const queueRemoteSync = (state: GarageState, set: SetGarageState) => {
+const queueRemoteSync = (state: GarageState, set: SetGarageState, scope: SyncScope = "all") => {
   if (!canUseSupabase()) return;
 
   const snapshot = getSnapshot(state);
   set({ isSyncing: true, syncError: undefined });
 
   syncQueue = syncQueue
-    .then(() => saveGarageSnapshot(snapshot))
+    .then(() => saveGarageSnapshot(snapshot, scope))
     .then(() => set({ isSyncing: false }))
     .catch((error) => {
       set({
@@ -350,14 +351,14 @@ export const useStore = create<GarageState>((set, get) => ({
         inventory: recalculateInventory(state.containerStock, [...state.inventorySections, section]),
       };
     });
-    queueRemoteSync(get(), set);
+    queueRemoteSync(get(), set, "inventory");
   },
 
   addLog: (type, message) => {
     set((state) => ({
       logs: [{ id: generateId(), type, message, timestamp: new Date().toISOString(), operator: "Master Admin" }, ...state.logs],
     }));
-    queueRemoteSync(get(), set);
+    queueRemoteSync(get(), set, "logs");
   },
 
   addCustomer: (customer) => {
@@ -380,6 +381,7 @@ export const useStore = create<GarageState>((set, get) => ({
     };
 
     set((state) => ({ customers: [newCustomer, ...state.customers] }));
+    queueRemoteSync(get(), set, "customers");
     get().addLog('MANUAL', `Customer profile created for ${newCustomer.name}`);
     return { ok: true, customer: newCustomer };
   },
@@ -395,7 +397,7 @@ export const useStore = create<GarageState>((set, get) => ({
     };
     set((state) => ({ incomingList: [newIncoming, ...state.incomingList] }));
     get().addLog('INCOMING', `Expected ${newIncoming.containerNumber} from ${entry.supplierName} on car ${entry.carNumber}`);
-    queueRemoteSync(get(), set);
+    queueRemoteSync(get(), set, "incoming");
   },
 
   updateIncomingStatus: (id, status) => {
@@ -421,7 +423,7 @@ export const useStore = create<GarageState>((set, get) => ({
 
       return { incomingList };
     });
-    queueRemoteSync(get(), set);
+    queueRemoteSync(get(), set, "incoming");
   },
 
   addOrder: (order) => {
@@ -488,7 +490,7 @@ export const useStore = create<GarageState>((set, get) => ({
       });
 
     get().addLog('OUTGOING', `Order created for ${order.customerName}; stock deducted from selected containers`);
-    queueRemoteSync(get(), set);
+    queueRemoteSync(get(), set, "orders");
     return { ok: true };
   },
 
@@ -511,7 +513,7 @@ export const useStore = create<GarageState>((set, get) => ({
 
       return { orders: state.orders.map((o) => o.id === id ? { ...o, status } : o) };
     });
-    queueRemoteSync(get(), set);
+    queueRemoteSync(get(), set, "orders");
   },
 
   updateInventoryManual: (itemName, quantity, difference, unit, containerNumber = 'MANUAL', inventorySectionId) => {
@@ -561,6 +563,6 @@ export const useStore = create<GarageState>((set, get) => ({
         inventory: recalculateInventory(containerStock, state.inventorySections),
       };
     });
-    queueRemoteSync(get(), set);
+    queueRemoteSync(get(), set, "inventory");
   },
 }));

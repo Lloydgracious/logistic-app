@@ -43,7 +43,8 @@ export default function LoginPage() {
 
     const account = await getCurrentAccount();
     if (account.status === "disabled") {
-      setFormError("This account is disabled. Ask an admin to reactivate it.");
+      router.push("/profile");
+      router.refresh();
       return;
     }
     if (account.status === "pending" || account.status === "signed_out") {

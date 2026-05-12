@@ -15,6 +15,22 @@ type CreateAccountBody = {
   enabledModules?: ModuleKey[];
 };
 
+async function findAuthUserIdByEmail(
+  supabase: NonNullable<Awaited<ReturnType<typeof getActiveAdminProfile>>["supabase"]>,
+  email: string
+) {
+  for (let page = 1; page <= 10; page += 1) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 100 });
+    if (error) return null;
+
+    const match = data.users.find((user) => user.email?.toLowerCase() === email);
+    if (match) return match.id;
+    if (data.users.length < 100) return null;
+  }
+
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   const { supabase, profile: adminProfile, error } = await getActiveAdminProfile(request);
   if (!supabase) {
@@ -48,12 +64,25 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  if (createError || !createdUser.user) {
+  const existingUserId = createError ? await findAuthUserIdByEmail(supabase, email) : null;
+  const userId = createdUser.user?.id || existingUserId;
+
+  if (!userId) {
     return NextResponse.json({ message: createError?.message || "Could not create auth user." }, { status: 400 });
   }
 
-  const userId = createdUser.user.id;
-  const { error: profileError } = await supabase.from("profiles").insert({
+  if (existingUserId) {
+    const { error: passwordError } = await supabase.auth.admin.updateUserById(existingUserId, {
+      password,
+      email_confirm: true,
+    });
+
+    if (passwordError) {
+      return NextResponse.json({ message: passwordError.message }, { status: 400 });
+    }
+  }
+
+  const { error: profileError } = await supabase.from("profiles").upsert({
     id: userId,
     email,
     full_name: fullName,
@@ -62,7 +91,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (profileError) {
-    await supabase.auth.admin.deleteUser(userId);
+    if (!existingUserId) await supabase.auth.admin.deleteUser(userId);
     return NextResponse.json({ message: profileError.message }, { status: 400 });
   }
 
@@ -76,14 +105,14 @@ export async function POST(request: NextRequest) {
     );
 
     if (moduleError) {
-      await supabase.auth.admin.deleteUser(userId);
+      if (!existingUserId) await supabase.auth.admin.deleteUser(userId);
       return NextResponse.json({ message: moduleError.message }, { status: 400 });
     }
   }
 
   await supabase.from("admin_audit_logs").insert({
     actor_id: adminProfile.id,
-    action: "account_created",
+    action: existingUserId ? "account_profile_created" : "account_created",
     target_type: "profile",
     target_id: userId,
     details: { email, role, enabledModules } as Json,

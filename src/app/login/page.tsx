@@ -47,7 +47,7 @@ export default function LoginPage() {
       return;
     }
     if (account.status === "pending" || account.status === "signed_out") {
-      setFormError("This login is not connected to an active staff invite yet.");
+      setFormError("This login is not connected to an active account yet. Ask an admin to create or repair this account.");
       return;
     }
 

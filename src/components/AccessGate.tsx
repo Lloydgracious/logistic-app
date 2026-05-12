@@ -96,7 +96,7 @@ export function AccessGate({ children }: { children: React.ReactNode }) {
     return <GateMessage title="Account Disabled" message="This account is disabled. Ask an admin to reactivate access." />;
   }
   if (account.status === "pending") {
-    return <GateMessage title="Account Pending" message="This login is not connected to an active staff invite yet." />;
+    return <GateMessage title="Account Pending" message="This login is not connected to an active account yet. Ask an admin to create or repair this account." />;
   }
 
   const moduleKey = getModuleForPath(pathname);

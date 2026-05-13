@@ -1,6 +1,7 @@
 import {
   Bell,
   FileText,
+  FileSpreadsheet,
   LayoutDashboard,
   Package,
   Receipt,
@@ -17,6 +18,7 @@ export type ModuleKey =
   | "orders"
   | "customers"
   | "inventory"
+  | "extract"
   | "logs"
   | "invoices"
   | "notifications";
@@ -48,6 +50,7 @@ export const MODULES: ModuleDefinition[] = [
   { key: "orders", label: "Orders", href: "/orders", icon: ShoppingCart, accent: "indigo" },
   { key: "customers", label: "Customers", href: "/customers", icon: Users, accent: "rose" },
   { key: "inventory", label: "Inventory", href: "/inventory", icon: Package, accent: "cyan" },
+  { key: "extract", label: "Extract", href: "/extract", icon: FileSpreadsheet, accent: "emerald" },
   { key: "logs", label: "Logs", href: "/logs", icon: ScrollText, accent: "slate" },
   { key: "invoices", label: "Billing", href: "/invoices", icon: Receipt, accent: "cyan" },
   { key: "notifications", label: "Notifications", href: "/notifications", icon: Bell, accent: "amber" },

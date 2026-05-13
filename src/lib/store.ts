@@ -29,6 +29,9 @@ export interface Incoming {
   arrivalTime: string;
   durationHours: number;
   note?: string;
+  isBookmarked?: boolean;
+  completedAt?: string;
+  archivedAt?: string;
 }
 
 export interface Order {
@@ -40,6 +43,9 @@ export interface Order {
   orderTime: string;
   finalDate: string;
   customerNote?: string;
+  isBookmarked?: boolean;
+  completedAt?: string;
+  archivedAt?: string;
 }
 
 export interface Customer {
@@ -115,11 +121,15 @@ interface GarageState {
   updateIncoming: (id: string, entry: Omit<Incoming, 'id'>) => void;
   deleteIncoming: (id: string) => void;
   updateIncomingStatus: (id: string, status: IncomingStatus) => void;
+  toggleIncomingBookmark: (id: string) => void;
+  restoreIncoming: (id: string) => void;
 
   addOrder: (order: Omit<Order, 'id' | 'status' | 'orderTime' | 'finalDate'> & { orderTime?: string, finalDate?: string }) => { ok: boolean; message?: string };
   updateOrder: (id: string, order: Omit<Order, 'id'>) => { ok: boolean; message?: string };
   deleteOrder: (id: string) => void;
   updateOrderStatus: (id: string, status: OrderStatus) => void;
+  toggleOrderBookmark: (id: string) => void;
+  restoreOrder: (id: string) => void;
 
   updateInventoryManual: (itemName: string, quantity: number, difference: number, unit?: string, containerNumber?: string, inventorySectionId?: string) => void;
   updateStockRow: (id: string, row: Omit<ContainerStock, 'id' | 'receivedAt' | 'updatedAt'> & { receivedAt?: string }) => void;
@@ -131,8 +141,62 @@ interface GarageState {
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
 const DEFAULT_SECTION_ID = "section-general";
+const ARCHIVE_AFTER_MONTHS = 3;
 
 const initialInventorySections: InventorySection[] = [];
+
+const monthsAgo = (months: number) => {
+  const date = new Date();
+  date.setMonth(date.getMonth() - months);
+  return date;
+};
+
+const getIncomingCompletionDate = (incoming: Incoming) => incoming.completedAt || (
+  incoming.status === "IN_GARAGE" ? incoming.arrivalTime : undefined
+);
+
+const getOrderCompletionDate = (order: Order) => order.completedAt || (
+  order.status === "DELIVERED" ? order.finalDate || order.orderTime : undefined
+);
+
+const shouldArchiveDate = (dateValue: string | undefined) => {
+  if (!dateValue) return false;
+
+  const date = new Date(dateValue);
+  return !Number.isNaN(date.getTime()) && date <= monthsAgo(ARCHIVE_AFTER_MONTHS);
+};
+
+const archiveExpiredCompletedRecords = (snapshot: SnapshotState) => {
+  const now = new Date().toISOString();
+  let changed = false;
+
+  const incomingList = snapshot.incomingList.map((incoming) => {
+    if (incoming.archivedAt || incoming.isBookmarked || incoming.status !== "IN_GARAGE" || !shouldArchiveDate(getIncomingCompletionDate(incoming))) {
+      return incoming;
+    }
+
+    changed = true;
+    return { ...incoming, archivedAt: now };
+  });
+
+  const orders = snapshot.orders.map((order) => {
+    if (order.archivedAt || order.isBookmarked || order.status !== "DELIVERED" || !shouldArchiveDate(getOrderCompletionDate(order))) {
+      return order;
+    }
+
+    changed = true;
+    return { ...order, archivedAt: now };
+  });
+
+  return {
+    changed,
+    snapshot: {
+      ...snapshot,
+      incomingList,
+      orders,
+    },
+  };
+};
 
 const resolveSection = (sectionId: string | undefined, sections: InventorySection[]) => {
   return sections.find((section) => section.id === sectionId) || sections[0] || {
@@ -384,12 +448,13 @@ export const useStore = create<GarageState>((set, get) => ({
 
       if (hasRemoteData) {
         const cleanedRemoteData = removePrototypeData(snapshot);
-        if (cleanedRemoteData.removedCount > 0) {
-          await saveGarageSnapshot(cleanedRemoteData.snapshot);
+        const archivedRemoteData = archiveExpiredCompletedRecords(cleanedRemoteData.snapshot);
+        if (cleanedRemoteData.removedCount > 0 || archivedRemoteData.changed) {
+          await saveGarageSnapshot(archivedRemoteData.snapshot);
         }
 
         set({
-          ...cleanedRemoteData.snapshot,
+          ...archivedRemoteData.snapshot,
           isHydrated: true,
           isSyncing: false,
           syncError: undefined,
@@ -581,6 +646,9 @@ export const useStore = create<GarageState>((set, get) => ({
       status: 'ON_THE_WAY',
       arrivalTime: entry.arrivalTime || new Date().toISOString(),
       durationHours: entry.durationHours || 24,
+      isBookmarked: entry.isBookmarked || false,
+      completedAt: undefined,
+      archivedAt: undefined,
     };
     set((state) => ({ incomingList: [newIncoming, ...state.incomingList] }));
     get().addLog('INCOMING', `Expected ${newIncoming.containerNumber} from ${entry.supplierName} on car ${entry.carNumber}`);
@@ -596,6 +664,11 @@ export const useStore = create<GarageState>((set, get) => ({
         ...entry,
         id,
         containerNumber: entry.containerNumber || entry.items[0]?.containerNumber || current.containerNumber,
+        isBookmarked: current.isBookmarked || entry.isBookmarked || false,
+        completedAt: entry.status === "IN_GARAGE"
+          ? entry.completedAt || current.completedAt || new Date().toISOString()
+          : undefined,
+        archivedAt: entry.status === "IN_GARAGE" ? current.archivedAt || entry.archivedAt : undefined,
         items: entry.items.map((item) => {
           const section = resolveSection(item.inventorySectionId, state.inventorySections);
           return {
@@ -647,7 +720,13 @@ export const useStore = create<GarageState>((set, get) => ({
       const incoming = state.incomingList.find((i) => i.id === id);
       if (!incoming) return state;
 
-      const incomingList = state.incomingList.map((i) => i.id === id ? { ...i, status } : i);
+      const now = new Date().toISOString();
+      const incomingList = state.incomingList.map((i) => i.id === id ? {
+        ...i,
+        status,
+        completedAt: status === "IN_GARAGE" ? i.completedAt || now : undefined,
+        archivedAt: status === "IN_GARAGE" ? i.archivedAt : undefined,
+      } : i);
 
       if (status === 'IN_GARAGE' && incoming.status !== 'IN_GARAGE') {
         const containerStock = createStockRows({ ...incoming, status }, state.containerStock, state.inventorySections);
@@ -666,6 +745,43 @@ export const useStore = create<GarageState>((set, get) => ({
       return { incomingList };
     });
     queueRemoteSync(get(), set, "incoming");
+  },
+
+  toggleIncomingBookmark: (id) => {
+    const current = get().incomingList.find((incoming) => incoming.id === id);
+    if (!current) return;
+
+    const nextBookmarked = !current.isBookmarked;
+    const shouldArchive = !nextBookmarked &&
+      current.status === "IN_GARAGE" &&
+      shouldArchiveDate(getIncomingCompletionDate(current));
+
+    set((state) => ({
+      incomingList: state.incomingList.map((incoming) => incoming.id === id ? {
+        ...incoming,
+        isBookmarked: nextBookmarked,
+        archivedAt: shouldArchive ? incoming.archivedAt || new Date().toISOString() : incoming.archivedAt,
+      } : incoming),
+    }));
+
+    queueRemoteSync(get(), set, "incoming");
+    get().addLog("MANUAL", `${current.containerNumber} was ${nextBookmarked ? "bookmarked" : "unbookmarked"}`);
+  },
+
+  restoreIncoming: (id) => {
+    const current = get().incomingList.find((incoming) => incoming.id === id);
+    if (!current) return;
+
+    set((state) => ({
+      incomingList: state.incomingList.map((incoming) => incoming.id === id ? {
+        ...incoming,
+        archivedAt: undefined,
+        isBookmarked: true,
+      } : incoming),
+    }));
+
+    queueRemoteSync(get(), set, "incoming");
+    get().addLog("MANUAL", `Archived incoming shipment ${current.containerNumber} was restored and bookmarked`);
   },
 
   addOrder: (order) => {
@@ -707,6 +823,9 @@ export const useStore = create<GarageState>((set, get) => ({
       status: 'PENDING',
       orderTime: order.orderTime || now,
       finalDate: order.finalDate || new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+      isBookmarked: order.isBookmarked || false,
+      completedAt: undefined,
+      archivedAt: undefined,
     };
 
     set((state) => {
@@ -781,6 +900,11 @@ export const useStore = create<GarageState>((set, get) => ({
           id,
           customerName,
           items: requestedItems,
+          isBookmarked: current.isBookmarked || order.isBookmarked || false,
+          completedAt: order.status === "DELIVERED"
+            ? order.completedAt || current.completedAt || now
+            : undefined,
+          archivedAt: order.status === "DELIVERED" ? current.archivedAt || order.archivedAt : undefined,
         } : item),
         containerStock,
         inventory: recalculateInventory(containerStock, state.inventorySections),
@@ -827,9 +951,54 @@ export const useStore = create<GarageState>((set, get) => ({
         setTimeout(() => get().addLog('OUTGOING', `Order for ${order.customerName} delivered on ${order.carNumber}`), 0);
       }
 
-      return { orders: state.orders.map((o) => o.id === id ? { ...o, status } : o) };
+      const now = new Date().toISOString();
+      return {
+        orders: state.orders.map((o) => o.id === id ? {
+          ...o,
+          status,
+          completedAt: status === "DELIVERED" ? o.completedAt || now : undefined,
+          archivedAt: status === "DELIVERED" ? o.archivedAt : undefined,
+        } : o),
+      };
     });
     queueRemoteSync(get(), set, "orders");
+  },
+
+  toggleOrderBookmark: (id) => {
+    const current = get().orders.find((order) => order.id === id);
+    if (!current) return;
+
+    const nextBookmarked = !current.isBookmarked;
+    const shouldArchive = !nextBookmarked &&
+      current.status === "DELIVERED" &&
+      shouldArchiveDate(getOrderCompletionDate(current));
+
+    set((state) => ({
+      orders: state.orders.map((order) => order.id === id ? {
+        ...order,
+        isBookmarked: nextBookmarked,
+        archivedAt: shouldArchive ? order.archivedAt || new Date().toISOString() : order.archivedAt,
+      } : order),
+    }));
+
+    queueRemoteSync(get(), set, "orders");
+    get().addLog("MANUAL", `Order for ${current.customerName} was ${nextBookmarked ? "bookmarked" : "unbookmarked"}`);
+  },
+
+  restoreOrder: (id) => {
+    const current = get().orders.find((order) => order.id === id);
+    if (!current) return;
+
+    set((state) => ({
+      orders: state.orders.map((order) => order.id === id ? {
+        ...order,
+        archivedAt: undefined,
+        isBookmarked: true,
+      } : order),
+    }));
+
+    queueRemoteSync(get(), set, "orders");
+    get().addLog("MANUAL", `Archived order for ${current.customerName} was restored and bookmarked`);
   },
 
   updateInventoryManual: (itemName, quantity, difference, unit, containerNumber = 'MANUAL', inventorySectionId) => {

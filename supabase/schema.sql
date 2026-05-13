@@ -24,8 +24,15 @@ create table if not exists public.incoming_shipments (
   status text not null check (status in ('ON_THE_WAY', 'AT_BRIDGE', 'IN_GARAGE')),
   arrival_time timestamptz not null default now(),
   duration_hours integer not null default 24 check (duration_hours > 0),
-  note text
+  note text,
+  is_bookmarked boolean not null default false,
+  completed_at timestamptz,
+  archived_at timestamptz
 );
+
+alter table public.incoming_shipments add column if not exists is_bookmarked boolean not null default false;
+alter table public.incoming_shipments add column if not exists completed_at timestamptz;
+alter table public.incoming_shipments add column if not exists archived_at timestamptz;
 
 create table if not exists public.incoming_items (
   id uuid primary key default gen_random_uuid(),
@@ -59,8 +66,15 @@ create table if not exists public.orders (
   status text not null check (status in ('PENDING', 'PREPARING', 'ON_THE_WAY', 'DELIVERED')),
   order_time timestamptz not null default now(),
   final_date timestamptz not null,
-  customer_note text
+  customer_note text,
+  is_bookmarked boolean not null default false,
+  completed_at timestamptz,
+  archived_at timestamptz
 );
+
+alter table public.orders add column if not exists is_bookmarked boolean not null default false;
+alter table public.orders add column if not exists completed_at timestamptz;
+alter table public.orders add column if not exists archived_at timestamptz;
 
 create table if not exists public.order_items (
   id uuid primary key default gen_random_uuid(),
@@ -115,9 +129,10 @@ insert into public.permission_modules (module_key, label, sort_order) values
   ('orders', 'Orders', 30),
   ('customers', 'Customers', 40),
   ('inventory', 'Inventory', 50),
-  ('logs', 'Logs', 60),
-  ('invoices', 'Billing', 70),
-  ('notifications', 'Notifications', 80)
+  ('extract', 'Extract', 60),
+  ('logs', 'Logs', 70),
+  ('invoices', 'Billing', 80),
+  ('notifications', 'Notifications', 90)
 on conflict (module_key) do update set
   label = excluded.label,
   sort_order = excluded.sort_order;
@@ -490,6 +505,30 @@ create policy "Module users can manage order items"
     or app_private.has_module_access('invoices')
     or app_private.has_module_access('dashboard')
   );
+
+drop policy if exists "Extract users can read incoming shipments" on public.incoming_shipments;
+create policy "Extract users can read incoming shipments"
+  on public.incoming_shipments for select
+  to authenticated
+  using (app_private.has_module_access('extract'));
+
+drop policy if exists "Extract users can read incoming items" on public.incoming_items;
+create policy "Extract users can read incoming items"
+  on public.incoming_items for select
+  to authenticated
+  using (app_private.has_module_access('extract'));
+
+drop policy if exists "Extract users can read orders" on public.orders;
+create policy "Extract users can read orders"
+  on public.orders for select
+  to authenticated
+  using (app_private.has_module_access('extract'));
+
+drop policy if exists "Extract users can read order items" on public.order_items;
+create policy "Extract users can read order items"
+  on public.order_items for select
+  to authenticated
+  using (app_private.has_module_access('extract'));
 
 drop policy if exists "Module users can read activity logs" on public.activity_logs;
 create policy "Module users can read activity logs"

@@ -2,7 +2,7 @@
 
 import { useStore, IncomingStatus } from "@/lib/store";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, ArrowRight, Truck, Trash, Pencil, Save, X } from "lucide-react";
+import { Plus, ArrowRight, Truck, Trash, Pencil, Save, X, Star, ArchiveRestore } from "lucide-react";
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import { getWaitingDays } from "@/lib/utils";
@@ -26,9 +26,10 @@ function StatusBadge({ status }: { status: IncomingStatus }) {
 }
 
 export default function IncomingPage() {
-  const { incomingList, inventorySections, updateIncomingStatus, addIncoming, updateIncoming, deleteIncoming } = useStore();
+  const { incomingList, inventorySections, updateIncomingStatus, addIncoming, updateIncoming, deleteIncoming, toggleIncomingBookmark, restoreIncoming } = useStore();
   const isAdmin = useAdminAccess();
   const [showAdd, setShowAdd] = useState(false);
+  const [listFilter, setListFilter] = useState<"current" | "bookmarked" | "archive">("current");
 
   const [newCarNumber, setNewCarNumber] = useState("");
   const [newSupplier, setNewSupplier] = useState("");
@@ -44,6 +45,11 @@ export default function IncomingPage() {
   const [editStatus, setEditStatus] = useState<IncomingStatus>("ON_THE_WAY");
   const [editNote, setEditNote] = useState("");
   const [editItems, setEditItems] = useState([{ name: "", containerNumber: "", quantity: "", unit: "", inventorySectionId: defaultSectionId }]);
+  const filteredIncomingList = incomingList.filter((item) => {
+    if (listFilter === "archive") return Boolean(item.archivedAt);
+    if (listFilter === "bookmarked") return Boolean(item.isBookmarked) && !item.archivedAt;
+    return !item.archivedAt;
+  });
 
   const addItemRow = () => setItems([...items, { name: "", containerNumber: "", quantity: "", unit: "", inventorySectionId: defaultSectionId }]);
   const removeItemRow = (idx: number) => {
@@ -168,6 +174,23 @@ export default function IncomingPage() {
         </button>
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        {([
+          ["current", "Current"],
+          ["bookmarked", "Bookmarked"],
+          ["archive", "Archive"],
+        ] as const).map(([value, label]) => (
+          <button
+            key={value}
+            onClick={() => setListFilter(value)}
+            className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest border transition-all ${listFilter === value ? "bg-rose-600 border-rose-600 text-white" : "bg-white dark:bg-black border-slate-200 dark:border-slate-800 text-slate-500 hover:text-rose-600"}`}
+            type="button"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <AnimatePresence>
         {showAdd && (
           <motion.div 
@@ -262,7 +285,7 @@ export default function IncomingPage() {
       </AnimatePresence>
 
       <div className="grid grid-cols-1 gap-6">
-        {incomingList.map((item) => (
+        {filteredIncomingList.map((item) => (
           <motion.div 
             key={item.id}
             layout
@@ -330,7 +353,34 @@ export default function IncomingPage() {
                     )}
                   </div>
                   <div className="ml-auto flex flex-col items-end gap-2">
-                    <StatusBadge status={item.status} />
+                    <div className="flex items-center gap-2">
+                      {item.archivedAt && (
+                        <span className="px-2 py-1 border border-slate-200 dark:border-slate-800 text-[9px] font-black uppercase tracking-widest text-slate-400">Archived</span>
+                      )}
+                      <StatusBadge status={item.status} />
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => toggleIncomingBookmark(item.id)}
+                        className={`p-2 border transition-colors ${item.isBookmarked ? "border-amber-200 bg-amber-50 text-amber-500" : "border-slate-200 dark:border-slate-800 text-slate-300 hover:text-amber-500"}`}
+                        aria-label={item.isBookmarked ? "Remove bookmark" : "Bookmark incoming shipment"}
+                        title={item.isBookmarked ? "Remove bookmark" : "Bookmark incoming shipment"}
+                        type="button"
+                      >
+                        <Star className={`w-3.5 h-3.5 ${item.isBookmarked ? "fill-current" : ""}`} />
+                      </button>
+                      {item.archivedAt && (
+                        <button
+                          onClick={() => restoreIncoming(item.id)}
+                          className="p-2 border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-emerald-500 transition-colors"
+                          aria-label="Restore incoming shipment"
+                          title="Restore incoming shipment"
+                          type="button"
+                        >
+                          <ArchiveRestore className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                     {isAdmin && (
                       <div className="flex items-center gap-1">
                         <button onClick={() => startEdit(item)} className="p-2 border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-indigo-500 transition-colors" aria-label="Edit incoming shipment">

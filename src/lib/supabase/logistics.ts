@@ -153,6 +153,9 @@ export async function fetchGarageSnapshot(): Promise<GarageSnapshot> {
     arrivalTime: incoming.arrival_time,
     durationHours: incoming.duration_hours,
     note: incoming.note || undefined,
+    isBookmarked: incoming.is_bookmarked || false,
+    completedAt: incoming.completed_at || undefined,
+    archivedAt: incoming.archived_at || undefined,
     items: incomingItems
       .filter((item) => item.incoming_id === incoming.id)
       .map((item) => ({
@@ -194,6 +197,9 @@ export async function fetchGarageSnapshot(): Promise<GarageSnapshot> {
     orderTime: order.order_time,
     finalDate: order.final_date,
     customerNote: order.customer_note || undefined,
+    isBookmarked: order.is_bookmarked || false,
+    completedAt: order.completed_at || undefined,
+    archivedAt: order.archived_at || undefined,
     items: orderItems
       .filter((item) => item.order_id === order.id)
       .map((item) => ({
@@ -317,6 +323,9 @@ export async function saveGarageSnapshot(snapshot: GarageSnapshot, scope: SyncSc
       arrival_time: incoming.arrivalTime,
       duration_hours: incoming.durationHours,
       note: incoming.note || null,
+      is_bookmarked: incoming.isBookmarked || false,
+      completed_at: incoming.completedAt || null,
+      archived_at: incoming.archivedAt || null,
     })));
 
     await upsertRows("incoming_items", snapshot.incomingList.flatMap((incoming) =>
@@ -368,6 +377,9 @@ export async function saveGarageSnapshot(snapshot: GarageSnapshot, scope: SyncSc
       order_time: order.orderTime,
       final_date: order.finalDate,
       customer_note: order.customerNote || null,
+      is_bookmarked: order.isBookmarked || false,
+      completed_at: order.completedAt || null,
+      archived_at: order.archivedAt || null,
     })));
 
     await upsertRows("order_items", snapshot.orders.flatMap((order) =>
@@ -438,6 +450,9 @@ export async function saveGarageSnapshot(snapshot: GarageSnapshot, scope: SyncSc
     arrival_time: incoming.arrivalTime,
     duration_hours: incoming.durationHours,
     note: incoming.note || null,
+    is_bookmarked: incoming.isBookmarked || false,
+    completed_at: incoming.completedAt || null,
+    archived_at: incoming.archivedAt || null,
   })));
 
   await upsertRows("incoming_items", snapshot.incomingList.flatMap((incoming) =>
@@ -474,6 +489,9 @@ export async function saveGarageSnapshot(snapshot: GarageSnapshot, scope: SyncSc
     order_time: order.orderTime,
     final_date: order.finalDate,
     customer_note: order.customerNote || null,
+    is_bookmarked: order.isBookmarked || false,
+    completed_at: order.completedAt || null,
+    archived_at: order.archivedAt || null,
   })));
 
   await upsertRows("order_items", snapshot.orders.flatMap((order) =>

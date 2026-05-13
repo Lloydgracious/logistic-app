@@ -6,7 +6,7 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { getWaitingDays } from "@/lib/utils";
-import { Plus, ArrowRight, ShoppingCart, CheckCircle2, Trash, Pencil, Save, X } from "lucide-react";
+import { Plus, ArrowRight, ShoppingCart, CheckCircle2, Trash, Pencil, Save, X, Star, ArchiveRestore } from "lucide-react";
 import { useAdminAccess } from "@/lib/use-admin-access";
 
 const AnimatedCar = dynamic(() => import("@/components/AnimatedCar").then(mod => mod.AnimatedCar), { ssr: false });
@@ -33,9 +33,10 @@ function StatusBadge({ status }: { status: OrderStatus }) {
 }
 
 export default function OrdersPage() {
-  const { orders, customers, updateOrderStatus, addOrder, updateOrder, deleteOrder, containerStock } = useStore();
+  const { orders, customers, updateOrderStatus, addOrder, updateOrder, deleteOrder, containerStock, toggleOrderBookmark, restoreOrder } = useStore();
   const isAdmin = useAdminAccess();
   const [showAdd, setShowAdd] = useState(false);
+  const [listFilter, setListFilter] = useState<"current" | "bookmarked" | "archive">("current");
 
   const [customerName, setCustomerName] = useState("");
   const [carNumber, setCarNumber] = useState("");
@@ -56,6 +57,11 @@ export default function OrdersPage() {
 
   const availableStock = containerStock.filter((row) => row.remainingQuantity > 0);
   const existingCustomers = [...customers].sort((a, b) => a.name.localeCompare(b.name));
+  const filteredOrders = orders.filter((order) => {
+    if (listFilter === "archive") return Boolean(order.archivedAt);
+    if (listFilter === "bookmarked") return Boolean(order.isBookmarked) && !order.archivedAt;
+    return !order.archivedAt;
+  });
 
   const addItemRow = () => setItems([...items, { stockId: "", quantity: "" }]);
   const removeItemRow = (idx: number) => {
@@ -193,6 +199,23 @@ export default function OrdersPage() {
         </button>
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        {([
+          ["current", "Current"],
+          ["bookmarked", "Bookmarked"],
+          ["archive", "Archive"],
+        ] as const).map(([value, label]) => (
+          <button
+            key={value}
+            onClick={() => setListFilter(value)}
+            className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest border transition-all ${listFilter === value ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white dark:bg-black border-slate-200 dark:border-slate-800 text-slate-500 hover:text-indigo-600"}`}
+            type="button"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <AnimatePresence>
         {showAdd && (
           <motion.div 
@@ -296,7 +319,7 @@ export default function OrdersPage() {
       </AnimatePresence>
 
       <div className="grid grid-cols-1 gap-6">
-        {orders.map((order) => (
+        {filteredOrders.map((order) => (
           <motion.div 
             key={order.id}
             layout
@@ -366,7 +389,34 @@ export default function OrdersPage() {
                     )}
                   </div>
                   <div className="ml-auto flex flex-col items-end gap-2">
-                    <StatusBadge status={order.status} />
+                    <div className="flex items-center gap-2">
+                      {order.archivedAt && (
+                        <span className="px-2 py-1 border border-slate-200 dark:border-slate-800 text-[9px] font-black uppercase tracking-widest text-slate-400">Archived</span>
+                      )}
+                      <StatusBadge status={order.status} />
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => toggleOrderBookmark(order.id)}
+                        className={`p-2 border transition-colors ${order.isBookmarked ? "border-amber-200 bg-amber-50 text-amber-500" : "border-slate-200 dark:border-slate-800 text-slate-300 hover:text-amber-500"}`}
+                        aria-label={order.isBookmarked ? "Remove bookmark" : "Bookmark order"}
+                        title={order.isBookmarked ? "Remove bookmark" : "Bookmark order"}
+                        type="button"
+                      >
+                        <Star className={`w-3.5 h-3.5 ${order.isBookmarked ? "fill-current" : ""}`} />
+                      </button>
+                      {order.archivedAt && (
+                        <button
+                          onClick={() => restoreOrder(order.id)}
+                          className="p-2 border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-emerald-500 transition-colors"
+                          aria-label="Restore order"
+                          title="Restore order"
+                          type="button"
+                        >
+                          <ArchiveRestore className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                     {isAdmin && (
                       <div className="flex items-center gap-1">
                         <button onClick={() => startEdit(order)} className="p-2 border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-indigo-500 transition-colors" aria-label="Edit order">

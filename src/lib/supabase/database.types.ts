@@ -121,21 +121,27 @@ export type Database = {
       };
       incoming_shipments: {
         Row: {
+          archived_at: string | null;
           arrival_time: string;
           car_number: string;
+          completed_at: string | null;
           container_number: string;
           duration_hours: number;
           id: string;
+          is_bookmarked: boolean;
           note: string | null;
           status: "ON_THE_WAY" | "AT_BRIDGE" | "IN_GARAGE";
           supplier_name: string;
         };
         Insert: {
+          archived_at?: string | null;
           arrival_time?: string;
           car_number: string;
+          completed_at?: string | null;
           container_number: string;
           duration_hours?: number;
           id: string;
+          is_bookmarked?: boolean;
           note?: string | null;
           status: "ON_THE_WAY" | "AT_BRIDGE" | "IN_GARAGE";
           supplier_name: string;
@@ -181,20 +187,26 @@ export type Database = {
       };
       orders: {
         Row: {
+          archived_at: string | null;
           car_number: string;
+          completed_at: string | null;
           customer_name: string;
           customer_note: string | null;
           final_date: string;
           id: string;
+          is_bookmarked: boolean;
           order_time: string;
           status: "PENDING" | "PREPARING" | "ON_THE_WAY" | "DELIVERED";
         };
         Insert: {
+          archived_at?: string | null;
           car_number: string;
+          completed_at?: string | null;
           customer_name: string;
           customer_note?: string | null;
           final_date: string;
           id: string;
+          is_bookmarked?: boolean;
           order_time?: string;
           status: "PENDING" | "PREPARING" | "ON_THE_WAY" | "DELIVERED";
         };

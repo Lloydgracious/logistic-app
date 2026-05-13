@@ -1,10 +1,9 @@
 "use client";
-
 import { useStore } from "@/lib/store";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Receipt, FileText, Printer, Download, ArrowRight, User, Calendar, BadgeDollarSign, Save, Trash2 } from "lucide-react";
+import { Receipt, FileText, Printer, Download, ArrowRight, User, Calendar, BadgeDollarSign, Save, Trash2, Plus, RotateCcw, X } from "lucide-react";
 
 const companyDetails = [
   "No.(C/21), Qtr 1, Near Chit Kyi Yay Bridge, Ba Yint Naung Road, Myawaddy.",
@@ -26,12 +25,23 @@ type SavedReceipt = {
   html: string;
 };
 
+type InvoiceItemDraft = {
+  id: string;
+  name: string;
+  subtitle: string;
+  quantity: string;
+  unit: string;
+  rate: string;
+};
+
 const escapeReceiptText = (value: string | number) =>
   String(value)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+
+const parsePositiveNumber = (value: string | number) => Math.max(0, Number(value) || 0);
 
 const onePagePrintStyles = `
   @page { size: A4; margin: 4mm; }
@@ -182,12 +192,20 @@ const onePagePrintStyles = `
 
 export default function InvoicePage() {
   const { orders } = useStore();
+  const activeOrders = orders.filter((order) => !order.archivedAt);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [documentDate, setDocumentDate] = useState("");
   const [manifestId, setManifestId] = useState("");
   const [defaultRate, setDefaultRate] = useState("100");
-  const [itemRates, setItemRates] = useState<Record<string, string>>({});
+  const [billingName, setBillingName] = useState("");
+  const [companyName, setCompanyName] = useState("KT Logistic & Trading");
+  const [companySubtitle, setCompanySubtitle] = useState("Kay Thi (Myawady) Trading Company Limited");
+  const [companyDetailText, setCompanyDetailText] = useState(companyDetails.join("\n"));
+  const [taxRate, setTaxRate] = useState("0");
+  const [invoiceItems, setInvoiceItems] = useState<InvoiceItemDraft[]>([]);
   const [savedReceipts, setSavedReceipts] = useState<SavedReceipt[]>([]);
+  const defaultRateRef = useRef(defaultRate);
+  const initializedOrderIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     try {
@@ -198,52 +216,78 @@ export default function InvoicePage() {
     }
   }, []);
 
-  const selectedOrder = orders.find(o => o.id === selectedOrderId);
+  useEffect(() => {
+    defaultRateRef.current = defaultRate;
+  }, [defaultRate]);
+
+  const selectedOrder = activeOrders.find(o => o.id === selectedOrderId);
   const resolvedManifestId = manifestId.trim() || (selectedOrder ? `ID-${selectedOrder.id.toUpperCase()}` : "ID-DRAFT");
   const resolvedDocumentDate = documentDate || new Date().toISOString().slice(0, 10);
-  const numericDefaultRate = Math.max(0, Number(defaultRate) || 0);
-  const getRateKey = (orderId: string, itemIndex: number) => `${orderId}:${itemIndex}`;
-  const getItemRate = (itemIndex: number) => {
-    if (!selectedOrder) return numericDefaultRate;
+  const resolvedBillingName = billingName.trim() || selectedOrder?.customerName || "Draft Customer";
+  const resolvedCompanyName = companyName.trim() || "KT Logistic & Trading";
+  const resolvedCompanySubtitle = companySubtitle.trim() || "Kay Thi (Myawady) Trading Company Limited";
+  const companyDetailLines = companyDetailText
+    .split(/\r?\n/)
+    .map((detail) => detail.trim())
+    .filter(Boolean);
+  const resolvedCompanyDetails = companyDetailLines.length > 0 ? companyDetailLines : companyDetails;
+  const subtotal = invoiceItems.reduce((acc, item) => acc + (parsePositiveNumber(item.quantity) * parsePositiveNumber(item.rate)), 0);
+  const taxPercentage = parsePositiveNumber(taxRate);
+  const taxAmount = subtotal * (taxPercentage / 100);
+  const grandTotal = subtotal + taxAmount;
 
-    const value = itemRates[getRateKey(selectedOrder.id, itemIndex)];
-    return Math.max(0, Number(value ?? defaultRate) || 0);
-  };
+  useEffect(() => {
+    if (!selectedOrder) {
+      initializedOrderIdRef.current = null;
+      setBillingName("");
+      setInvoiceItems([]);
+      return;
+    }
 
-  const calculateTotal = (items: { quantity: number }[]) => {
-    return items.reduce((acc, item, index) => acc + (item.quantity * getItemRate(index)), 0);
-  };
+    if (initializedOrderIdRef.current === selectedOrder.id) return;
+
+    initializedOrderIdRef.current = selectedOrder.id;
+    setBillingName(selectedOrder.customerName);
+    setInvoiceItems(selectedOrder.items.map((item, index) => ({
+      id: `${selectedOrder.id}-${index}-${Date.now()}`,
+      name: item.name,
+      subtitle: "Industrial Grade Asset",
+      quantity: String(item.quantity),
+      unit: item.unit || "U",
+      rate: defaultRateRef.current,
+    })));
+  }, [selectedOrder]);
 
   const buildCurrentReceiptHtml = () => {
     if (!selectedOrder) return "";
 
-    const rows = selectedOrder.items.map((item, index) => {
-      const rate = getItemRate(index);
-      const lineTotal = item.quantity * rate;
+    const rows = invoiceItems.map((item) => {
+      const quantity = parsePositiveNumber(item.quantity);
+      const rate = parsePositiveNumber(item.rate);
+      const lineTotal = quantity * rate;
 
       return `
         <tr>
           <td style="width: 46%;">
-            ${escapeReceiptText(item.name)}
-            <span class="muted">Industrial Grade Asset</span>
+            ${escapeReceiptText(item.name || "Cargo Item")}
+            ${item.subtitle.trim() ? `<span class="muted">${escapeReceiptText(item.subtitle)}</span>` : ""}
           </td>
-          <td class="compact-center" style="width: 16%;">${escapeReceiptText(item.quantity)} ${escapeReceiptText(item.unit || "U")}</td>
+          <td class="compact-center" style="width: 16%;">${escapeReceiptText(quantity)} ${escapeReceiptText(item.unit || "U")}</td>
           <td class="compact-right" style="width: 18%;">${rate.toFixed(2)}</td>
           <td class="compact-right" style="width: 20%;">${lineTotal.toFixed(2)}</td>
         </tr>
       `;
     }).join("");
-    const total = calculateTotal(selectedOrder.items);
 
     return `
       <main class="compact-receipt">
         <section class="compact-header">
           <div>
             <img src="/kt-logistic-logo.jpg" alt="KT Logistic & Trading" class="compact-logo" />
-            <div class="compact-company">KT Logistic & Trading</div>
-            <div class="compact-subtitle">Kay Thi (Myawady) Trading Company Limited</div>
+            <div class="compact-company">${escapeReceiptText(resolvedCompanyName)}</div>
+            <div class="compact-subtitle">${escapeReceiptText(resolvedCompanySubtitle)}</div>
             <div class="compact-details">
-              ${companyDetails.map((detail) => `<div class="compact-detail">${escapeReceiptText(detail)}</div>`).join("")}
+              ${resolvedCompanyDetails.map((detail) => `<div class="compact-detail">${escapeReceiptText(detail)}</div>`).join("")}
             </div>
           </div>
           <div class="compact-meta">
@@ -263,7 +307,7 @@ export default function InvoicePage() {
 
         <section class="compact-billing">
           <span class="compact-label">Billing Name</span>
-          <span class="compact-billing-name">${escapeReceiptText(selectedOrder.customerName)}</span>
+          <span class="compact-billing-name">${escapeReceiptText(resolvedBillingName)}</span>
         </section>
 
         <table class="compact-table">
@@ -281,15 +325,15 @@ export default function InvoicePage() {
         <section class="compact-total">
           <div class="compact-total-row">
             <span>Subtotal (Credits)</span>
-            <span>${total.toFixed(2)}</span>
+            <span>${subtotal.toFixed(2)}</span>
           </div>
           <div class="compact-total-row">
-            <span>Protocol Tax (0%)</span>
-            <span>0.00</span>
+            <span>Protocol Tax (${taxPercentage.toFixed(2)}%)</span>
+            <span>${taxAmount.toFixed(2)}</span>
           </div>
           <div class="compact-total-due">
             <span class="compact-due-label">Total Credits Due</span>
-            <span class="compact-due-value">${total.toFixed(2)}</span>
+            <span class="compact-due-value">${grandTotal.toFixed(2)}</span>
           </div>
         </section>
       </main>
@@ -309,8 +353,8 @@ export default function InvoicePage() {
       orderId: selectedOrder.id,
       manifestId: resolvedManifestId,
       documentDate: resolvedDocumentDate,
-      customerName: selectedOrder.customerName,
-      total: calculateTotal(selectedOrder.items),
+      customerName: resolvedBillingName,
+      total: grandTotal,
       savedAt: new Date().toISOString(),
       html: buildCurrentReceiptHtml(),
     };
@@ -369,24 +413,49 @@ export default function InvoicePage() {
 
   const handleDefaultRateChange = (value: string) => {
     setDefaultRate(value);
-    if (!selectedOrder) return;
-
-    setItemRates((currentRates) => {
-      const nextRates = { ...currentRates };
-      selectedOrder.items.forEach((_item, index) => {
-        nextRates[getRateKey(selectedOrder.id, index)] = value;
-      });
-      return nextRates;
-    });
+    setInvoiceItems((currentItems) => currentItems.map((item) => ({ ...item, rate: value })));
   };
 
-  const handleItemRateChange = (itemIndex: number, value: string) => {
+  const updateInvoiceItem = (itemId: string, field: keyof Omit<InvoiceItemDraft, "id">, value: string) => {
+    setInvoiceItems((currentItems) => currentItems.map((item) => (
+      item.id === itemId ? { ...item, [field]: value } : item
+    )));
+  };
+
+  const addInvoiceItem = () => {
+    setInvoiceItems((currentItems) => [
+      ...currentItems,
+      {
+        id: `draft-${Date.now()}`,
+        name: "New Cargo Item",
+        subtitle: "Industrial Grade Asset",
+        quantity: "1",
+        unit: "U",
+        rate: defaultRate,
+      },
+    ]);
+  };
+
+  const removeInvoiceItem = (itemId: string) => {
+    setInvoiceItems((currentItems) => currentItems.filter((item) => item.id !== itemId));
+  };
+
+  const resetBillDraft = () => {
     if (!selectedOrder) return;
 
-    setItemRates((currentRates) => ({
-      ...currentRates,
-      [getRateKey(selectedOrder.id, itemIndex)]: value,
-    }));
+    setBillingName(selectedOrder.customerName);
+    setCompanyName("KT Logistic & Trading");
+    setCompanySubtitle("Kay Thi (Myawady) Trading Company Limited");
+    setCompanyDetailText(companyDetails.join("\n"));
+    setTaxRate("0");
+    setInvoiceItems(selectedOrder.items.map((item, index) => ({
+      id: `${selectedOrder.id}-${index}-${Date.now()}`,
+      name: item.name,
+      subtitle: "Industrial Grade Asset",
+      quantity: String(item.quantity),
+      unit: item.unit || "U",
+      rate: defaultRate,
+    })));
   };
 
   const handleExportPdf = () => {
@@ -440,7 +509,7 @@ export default function InvoicePage() {
            <div className="saas-card p-6 rounded-none border-t-4 border-t-cyan-500 bg-white dark:bg-black overflow-hidden relative">
               <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 border-b border-slate-100 dark:border-zinc-800 pb-3">Available Orders</h3>
               <div className="space-y-3">
-                 {orders.map((order) => (
+                 {activeOrders.map((order) => (
                     <button 
                       key={order.id} 
                       onClick={() => handleSelectOrder(order.id)}
@@ -453,7 +522,7 @@ export default function InvoicePage() {
                        <ArrowRight className={`w-4 h-4 ${selectedOrderId === order.id ? 'text-cyan-600' : 'text-slate-200'}`} />
                     </button>
                  ))}
-                 {orders.length === 0 && (
+                 {activeOrders.length === 0 && (
                     <p className="text-center py-10 text-xs text-slate-400 font-black uppercase tracking-widest">No active orders found.</p>
                  )}
               </div>
@@ -502,23 +571,130 @@ export default function InvoicePage() {
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Applies to all current items. You can edit each item rate below.</p>
                  </div>
                  {selectedOrder && (
-                   <div className="space-y-3 border-t border-cyan-100 dark:border-cyan-900/40 pt-4">
-                    <p className="text-[10px] text-slate-500 uppercase font-black tracking-wider">Item Rates</p>
-                    {selectedOrder.items.map((item, index) => (
-                      <div key={`${selectedOrder.id}-${index}`} className="grid grid-cols-[1fr_110px] gap-3 items-center">
-                        <div className="min-w-0">
-                          <p className="truncate text-xs font-black text-slate-800 dark:text-white uppercase tracking-tight">{item.name}</p>
-                          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{item.quantity} {item.unit || "units"}</p>
-                        </div>
-                        <input
-                          type="number"
-                          min="0"
-                          value={itemRates[getRateKey(selectedOrder.id, index)] ?? defaultRate}
-                          onChange={(event) => handleItemRateChange(index, event.target.value)}
-                          className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-3 py-2 text-right text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold"
-                        />
+                   <div className="space-y-5 border-t border-cyan-100 dark:border-cyan-900/40 pt-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-[10px] text-slate-500 uppercase font-black tracking-wider">Editable Bill Details</p>
+                      <button
+                        onClick={resetBillDraft}
+                        className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-cyan-600 transition-colors"
+                        type="button"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" /> Reset
+                      </button>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="flex items-center gap-2 text-[10px] text-slate-500 uppercase font-black tracking-wider">
+                        <User className="w-3.5 h-3.5 text-cyan-600" />
+                        Billing Name
+                      </label>
+                      <input
+                        value={billingName}
+                        onChange={(event) => setBillingName(event.target.value)}
+                        className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3">
+                      <input
+                        value={companyName}
+                        onChange={(event) => setCompanyName(event.target.value)}
+                        aria-label="Company name"
+                        className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold"
+                      />
+                      <input
+                        value={companySubtitle}
+                        onChange={(event) => setCompanySubtitle(event.target.value)}
+                        aria-label="Company subtitle"
+                        className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold"
+                      />
+                      <textarea
+                        value={companyDetailText}
+                        onChange={(event) => setCompanyDetailText(event.target.value)}
+                        aria-label="Company address and contact lines"
+                        rows={4}
+                        className="w-full resize-y bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-slate-800 dark:text-slate-100 text-xs outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold leading-relaxed"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="flex items-center gap-2 text-[10px] text-slate-500 uppercase font-black tracking-wider">
+                        <BadgeDollarSign className="w-3.5 h-3.5 text-cyan-600" />
+                        Protocol Tax %
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={taxRate}
+                        onChange={(event) => setTaxRate(event.target.value)}
+                        className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold"
+                      />
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-[10px] text-slate-500 uppercase font-black tracking-wider">Cargo Lines</p>
+                        <button
+                          onClick={addInvoiceItem}
+                          className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-cyan-600 hover:text-slate-900 dark:hover:text-white transition-colors"
+                          type="button"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Add Line
+                        </button>
                       </div>
-                    ))}
+                      {invoiceItems.map((item, index) => (
+                        <div key={item.id} className="border border-cyan-100 dark:border-cyan-900/40 bg-white/70 dark:bg-black/30 p-3 space-y-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Line {index + 1}</p>
+                            <button
+                              onClick={() => removeInvoiceItem(item.id)}
+                              className="p-1.5 text-slate-300 hover:text-rose-500 transition-colors"
+                              aria-label="Remove cargo line"
+                              title="Remove cargo line"
+                              type="button"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <input
+                            value={item.name}
+                            onChange={(event) => updateInvoiceItem(item.id, "name", event.target.value)}
+                            aria-label="Cargo description"
+                            className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-3 py-2 text-slate-800 dark:text-slate-100 text-xs outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-black uppercase"
+                          />
+                          <input
+                            value={item.subtitle}
+                            onChange={(event) => updateInvoiceItem(item.id, "subtitle", event.target.value)}
+                            aria-label="Cargo subtitle"
+                            className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-3 py-2 text-slate-700 dark:text-slate-200 text-xs outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold"
+                          />
+                          <div className="grid grid-cols-[1fr_76px_1fr] gap-2">
+                            <input
+                              type="number"
+                              min="0"
+                              value={item.quantity}
+                              onChange={(event) => updateInvoiceItem(item.id, "quantity", event.target.value)}
+                              aria-label="Quantity"
+                              className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-3 py-2 text-right text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold"
+                            />
+                            <input
+                              value={item.unit}
+                              onChange={(event) => updateInvoiceItem(item.id, "unit", event.target.value)}
+                              aria-label="Unit"
+                              className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-3 py-2 text-center text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold uppercase"
+                            />
+                            <input
+                              type="number"
+                              min="0"
+                              value={item.rate}
+                              onChange={(event) => updateInvoiceItem(item.id, "rate", event.target.value)}
+                              aria-label="Rate"
+                              className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-3 py-2 text-right text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                    </div>
                  )}
               </div>
@@ -588,13 +764,13 @@ export default function InvoicePage() {
                             <Image src="/kt-logistic-logo.jpg" alt="KT Logistic & Trading" width={842} height={595} className="receipt-logo h-32 w-auto object-contain" priority />
                           </div>
                           <h1 className="receipt-company-title text-3xl md:text-4xl font-black outfit tracking-tighter text-slate-950 dark:text-white uppercase leading-none">
-                            KT Logistic <span className="text-cyan-500 italic">& Trading</span>
+                            {resolvedCompanyName}
                           </h1>
                           <p className="receipt-company-subtitle text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 mt-3">
-                            Kay Thi (Myawady) Trading Company Limited
+                            {resolvedCompanySubtitle}
                           </p>
                           <div className="receipt-company-details mt-5 space-y-1">
-                            {companyDetails.map((detail) => (
+                            {resolvedCompanyDetails.map((detail) => (
                               <p key={detail} className="receipt-company-detail text-[10px] md:text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-zinc-400 leading-relaxed">
                                 {detail}
                               </p>
@@ -618,7 +794,7 @@ export default function InvoicePage() {
                              <User className="w-4 h-4" />
                              <span className="text-[10px] font-black uppercase tracking-[0.3em]">Billing Name</span>
                           </div>
-                          <h4 className="receipt-billing-name text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{selectedOrder.customerName}</h4>
+                          <h4 className="receipt-billing-name text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{resolvedBillingName}</h4>
                        </div>
                     </div>
 
@@ -633,23 +809,30 @@ export default function InvoicePage() {
                              </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 dark:divide-zinc-900">
-                             {selectedOrder.items.map((item, idx) => (
-                                <tr key={idx}>
+                             {invoiceItems.map((item) => {
+                              const quantity = parsePositiveNumber(item.quantity);
+                              const rate = parsePositiveNumber(item.rate);
+
+                              return (
+                                <tr key={item.id}>
                                    <td className="py-6">
-                                      <p className="receipt-item-name text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">{item.name}</p>
-                                      <p className="receipt-item-subtitle text-[9px] text-slate-400 font-bold uppercase mt-1">Industrial Grade Asset</p>
+                                      <p className="receipt-item-name text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">{item.name || "Cargo Item"}</p>
+                                      {item.subtitle.trim() && (
+                                        <p className="receipt-item-subtitle text-[9px] text-slate-400 font-bold uppercase mt-1">{item.subtitle}</p>
+                                      )}
                                    </td>
                                    <td className="py-6 text-center">
-                                      <span className="receipt-cell text-sm font-black text-slate-600 dark:text-zinc-400 uppercase">{item.quantity} <span className="text-[9px] text-slate-400 ml-1">{item.unit || "U"}</span></span>
+                                      <span className="receipt-cell text-sm font-black text-slate-600 dark:text-zinc-400 uppercase">{quantity} <span className="text-[9px] text-slate-400 ml-1">{item.unit || "U"}</span></span>
                                    </td>
                                    <td className="py-6 text-right">
-                                      <span className="receipt-cell text-sm font-black text-slate-600 dark:text-zinc-400">{getItemRate(idx).toFixed(2)}</span>
+                                      <span className="receipt-cell text-sm font-black text-slate-600 dark:text-zinc-400">{rate.toFixed(2)}</span>
                                    </td>
                                    <td className="py-6 text-right">
-                                      <span className="receipt-cell text-sm font-black text-slate-900 dark:text-white">{(item.quantity * getItemRate(idx)).toFixed(2)}</span>
+                                      <span className="receipt-cell text-sm font-black text-slate-900 dark:text-white">{(quantity * rate).toFixed(2)}</span>
                                    </td>
                                 </tr>
-                             ))}
+                              );
+                             })}
                           </tbody>
                        </table>
                     </div>
@@ -658,15 +841,15 @@ export default function InvoicePage() {
                        <div className="receipt-total-box border-t-4 border-slate-950 dark:border-white pt-6 w-full max-w-md">
                           <div className="receipt-total-row grid grid-cols-[1fr_auto] gap-6 items-center text-slate-400 font-black mb-2">
                              <span className="receipt-total-label text-[10px] uppercase tracking-widest">Subtotal (Credits)</span>
-                             <span className="text-sm">{calculateTotal(selectedOrder.items).toFixed(2)}</span>
+                             <span className="text-sm">{subtotal.toFixed(2)}</span>
                           </div>
                           <div className="receipt-total-row grid grid-cols-[1fr_auto] gap-6 items-center text-slate-400 font-black mb-6">
-                             <span className="receipt-total-label text-[10px] uppercase tracking-widest">Protocol Tax (0%)</span>
-                             <span className="text-sm">0.00</span>
+                             <span className="receipt-total-label text-[10px] uppercase tracking-widest">Protocol Tax ({taxPercentage.toFixed(2)}%)</span>
+                             <span className="text-sm">{taxAmount.toFixed(2)}</span>
                           </div>
                           <div className="receipt-total-due grid grid-cols-[1fr_auto] gap-6 items-baseline border-t border-slate-100 dark:border-zinc-800 pt-5">
                              <span className="receipt-total-label text-[10px] font-black uppercase tracking-[0.4em] text-cyan-600">Total Credits due</span>
-                             <span className="receipt-total-value text-5xl md:text-6xl font-black text-slate-950 dark:text-white outfit tracking-tighter italic tabular-nums text-right">{calculateTotal(selectedOrder.items).toFixed(2)}</span>
+                             <span className="receipt-total-value text-5xl md:text-6xl font-black text-slate-950 dark:text-white outfit tracking-tighter italic tabular-nums text-right">{grandTotal.toFixed(2)}</span>
                           </div>
                        </div>
                     </div>

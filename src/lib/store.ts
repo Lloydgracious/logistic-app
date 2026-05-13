@@ -106,14 +106,24 @@ interface GarageState {
   logs: LogEntry[];
 
   addCustomer: (customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>) => { ok: boolean; customer?: Customer; message?: string };
+  updateCustomer: (id: string, customer: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>) => { ok: boolean; message?: string };
+  deleteCustomer: (id: string) => void;
   addInventorySection: (title: string) => void;
+  updateInventorySection: (id: string, title: string) => { ok: boolean; message?: string };
+  deleteInventorySection: (id: string) => void;
   addIncoming: (entry: Omit<Incoming, 'id' | 'status' | 'arrivalTime' | 'durationHours'> & { arrivalTime?: string, durationHours?: number }) => void;
+  updateIncoming: (id: string, entry: Omit<Incoming, 'id'>) => void;
+  deleteIncoming: (id: string) => void;
   updateIncomingStatus: (id: string, status: IncomingStatus) => void;
 
   addOrder: (order: Omit<Order, 'id' | 'status' | 'orderTime' | 'finalDate'> & { orderTime?: string, finalDate?: string }) => { ok: boolean; message?: string };
+  updateOrder: (id: string, order: Omit<Order, 'id'>) => { ok: boolean; message?: string };
+  deleteOrder: (id: string) => void;
   updateOrderStatus: (id: string, status: OrderStatus) => void;
 
   updateInventoryManual: (itemName: string, quantity: number, difference: number, unit?: string, containerNumber?: string, inventorySectionId?: string) => void;
+  updateStockRow: (id: string, row: Omit<ContainerStock, 'id' | 'receivedAt' | 'updatedAt'> & { receivedAt?: string }) => void;
+  deleteStockRow: (id: string) => void;
   addLog: (type: LogType, message: string) => void;
   loadRemoteData: () => Promise<void>;
 }
@@ -196,6 +206,71 @@ const createStockRows = (
   });
 
   return [...stockRows, ...existingRows];
+};
+
+const createStockRowsForIncoming = (
+  incoming: Incoming,
+  sections: InventorySection[] = initialInventorySections,
+  previousRows: ContainerStock[] = []
+): ContainerStock[] => {
+  const timestamp = new Date().toISOString();
+
+  return incoming.items.map((item, index) => {
+    const section = resolveSection(item.inventorySectionId, sections);
+    const previousRow = previousRows.find((row) => row.id === `stock-${incoming.id}-${index + 1}`);
+    const previouslyAllocated = previousRow
+      ? Math.max(0, previousRow.initialQuantity - previousRow.remainingQuantity)
+      : 0;
+    const quantity = Math.max(0, item.quantity);
+
+    return {
+      id: `stock-${incoming.id}-${index + 1}`,
+      containerId: incoming.id,
+      containerNumber: item.containerNumber || incoming.containerNumber || "NO-CONTAINER",
+      carNumber: incoming.carNumber,
+      supplierName: incoming.supplierName,
+      inventorySectionId: section.id,
+      inventorySectionTitle: section.title,
+      productName: item.name,
+      initialQuantity: quantity,
+      remainingQuantity: Math.max(0, quantity - previouslyAllocated),
+      unit: item.unit,
+      receivedAt: incoming.arrivalTime,
+      updatedAt: timestamp,
+    };
+  });
+};
+
+const restoreOrderStock = (stock: ContainerStock[], order: Order, timestamp: string) => {
+  return stock.map((row) => {
+    const orderedQuantity = order.items
+      .filter((item) => item.containerId === row.id)
+      .reduce((sum, item) => sum + item.quantity, 0);
+
+    if (!orderedQuantity) return row;
+
+    return {
+      ...row,
+      remainingQuantity: row.remainingQuantity + orderedQuantity,
+      updatedAt: timestamp,
+    };
+  });
+};
+
+const deductOrderStock = (stock: ContainerStock[], items: ItemDetail[], timestamp: string) => {
+  return stock.map((row) => {
+    const orderedQuantity = items
+      .filter((item) => item.containerId === row.id)
+      .reduce((sum, item) => sum + item.quantity, 0);
+
+    if (!orderedQuantity) return row;
+
+    return {
+      ...row,
+      remainingQuantity: Math.max(0, row.remainingQuantity - orderedQuantity),
+      updatedAt: timestamp,
+    };
+  });
 };
 
 type SnapshotState = Pick<
@@ -354,6 +429,75 @@ export const useStore = create<GarageState>((set, get) => ({
     queueRemoteSync(get(), set, "inventory");
   },
 
+  updateInventorySection: (id, title) => {
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) return { ok: false, message: "Header name is required." };
+
+    const existing = get().inventorySections.find((section) => section.id !== id && section.title.toLowerCase() === trimmedTitle.toLowerCase());
+    if (existing) return { ok: false, message: "Another header already uses this name." };
+
+    const current = get().inventorySections.find((section) => section.id === id);
+    if (!current) return { ok: false, message: "Header not found." };
+
+    set((state) => {
+      const inventorySections = state.inventorySections.map((section) => section.id === id ? {
+        ...section,
+        title: trimmedTitle,
+      } : section);
+      const containerStock = state.containerStock.map((row) => row.inventorySectionId === id ? {
+        ...row,
+        inventorySectionTitle: trimmedTitle,
+        updatedAt: new Date().toISOString(),
+      } : row);
+      const incomingList = state.incomingList.map((incoming) => ({
+        ...incoming,
+        items: incoming.items.map((item) => item.inventorySectionId === id ? {
+          ...item,
+          inventorySectionTitle: trimmedTitle,
+        } : item),
+      }));
+
+      return {
+        inventorySections,
+        incomingList,
+        containerStock,
+        inventory: recalculateInventory(containerStock, inventorySections),
+      };
+    });
+
+    queueRemoteSync(get(), set, "all");
+    get().addLog('MANUAL', `Inventory header renamed from ${current.title} to ${trimmedTitle}`);
+    return { ok: true };
+  },
+
+  deleteInventorySection: (id) => {
+    const section = get().inventorySections.find((item) => item.id === id);
+    if (!section) return;
+
+    set((state) => {
+      const inventorySections = state.inventorySections.filter((item) => item.id !== id);
+      const containerStock = state.containerStock.filter((row) => row.inventorySectionId !== id);
+      const incomingList = state.incomingList.map((incoming) => ({
+        ...incoming,
+        items: incoming.items.map((item) => item.inventorySectionId === id ? {
+          ...item,
+          inventorySectionId: undefined,
+          inventorySectionTitle: undefined,
+        } : item),
+      }));
+
+      return {
+        inventorySections,
+        incomingList,
+        containerStock,
+        inventory: recalculateInventory(containerStock, inventorySections),
+      };
+    });
+
+    queueRemoteSync(get(), set, "all");
+    get().addLog('MANUAL', `Inventory header ${section.title} was deleted`);
+  },
+
   addLog: (type, message) => {
     set((state) => ({
       logs: [{ id: generateId(), type, message, timestamp: new Date().toISOString(), operator: "Master Admin" }, ...state.logs],
@@ -386,6 +530,49 @@ export const useStore = create<GarageState>((set, get) => ({
     return { ok: true, customer: newCustomer };
   },
 
+  updateCustomer: (id, customer) => {
+    const name = customer.name.trim();
+    if (!name) return { ok: false, message: "Customer name is required." };
+
+    const existingWithName = get().customers.find((item) => item.id !== id && item.name.toLowerCase() === name.toLowerCase());
+    if (existingWithName) return { ok: false, message: "Another customer already uses this name." };
+
+    const current = get().customers.find((item) => item.id === id);
+    if (!current) return { ok: false, message: "Customer not found." };
+
+    const now = new Date().toISOString();
+    set((state) => ({
+      customers: state.customers.map((item) => item.id === id ? {
+        ...item,
+        name,
+        phone: customer.phone?.trim() || undefined,
+        address: customer.address?.trim() || undefined,
+        note: customer.note?.trim() || undefined,
+        updatedAt: now,
+      } : item),
+      orders: state.orders.map((order) => order.customerName.toLowerCase() === current.name.toLowerCase()
+        ? { ...order, customerName: name }
+        : order
+      ),
+    }));
+
+    queueRemoteSync(get(), set, "all");
+    get().addLog('MANUAL', `Customer profile updated for ${name}`);
+    return { ok: true };
+  },
+
+  deleteCustomer: (id) => {
+    const customer = get().customers.find((item) => item.id === id);
+    if (!customer) return;
+
+    set((state) => ({
+      customers: state.customers.filter((item) => item.id !== id),
+    }));
+
+    queueRemoteSync(get(), set, "all");
+    get().addLog('MANUAL', `Customer profile deleted for ${customer.name}`);
+  },
+
   addIncoming: (entry) => {
     const newIncoming: Incoming = {
       ...entry,
@@ -398,6 +585,61 @@ export const useStore = create<GarageState>((set, get) => ({
     set((state) => ({ incomingList: [newIncoming, ...state.incomingList] }));
     get().addLog('INCOMING', `Expected ${newIncoming.containerNumber} from ${entry.supplierName} on car ${entry.carNumber}`);
     queueRemoteSync(get(), set, "incoming");
+  },
+
+  updateIncoming: (id, entry) => {
+    set((state) => {
+      const current = state.incomingList.find((incoming) => incoming.id === id);
+      if (!current) return state;
+
+      const updatedIncoming: Incoming = {
+        ...entry,
+        id,
+        containerNumber: entry.containerNumber || entry.items[0]?.containerNumber || current.containerNumber,
+        items: entry.items.map((item) => {
+          const section = resolveSection(item.inventorySectionId, state.inventorySections);
+          return {
+            ...item,
+            quantity: Math.max(0, item.quantity),
+            inventorySectionId: section.id,
+            inventorySectionTitle: section.title,
+          };
+        }),
+      };
+
+      const incomingList = state.incomingList.map((incoming) => incoming.id === id ? updatedIncoming : incoming);
+      const otherStockRows = state.containerStock.filter((row) => row.containerId !== id);
+      const previousRows = state.containerStock.filter((row) => row.containerId === id);
+      const containerStock = updatedIncoming.status === 'IN_GARAGE'
+        ? [...createStockRowsForIncoming(updatedIncoming, state.inventorySections, previousRows), ...otherStockRows]
+        : otherStockRows;
+
+      return {
+        incomingList,
+        containerStock,
+        inventory: recalculateInventory(containerStock, state.inventorySections),
+      };
+    });
+
+    queueRemoteSync(get(), set, "incoming");
+    get().addLog('INCOMING', `Incoming shipment ${entry.containerNumber} was updated`);
+  },
+
+  deleteIncoming: (id) => {
+    const incoming = get().incomingList.find((item) => item.id === id);
+    if (!incoming) return;
+
+    set((state) => {
+      const containerStock = state.containerStock.filter((row) => row.containerId !== id);
+      return {
+        incomingList: state.incomingList.filter((item) => item.id !== id),
+        containerStock,
+        inventory: recalculateInventory(containerStock, state.inventorySections),
+      };
+    });
+
+    queueRemoteSync(get(), set, "all");
+    get().addLog('INCOMING', `Incoming shipment ${incoming.containerNumber} was deleted`);
   },
 
   updateIncomingStatus: (id, status) => {
@@ -494,6 +736,80 @@ export const useStore = create<GarageState>((set, get) => ({
     return { ok: true };
   },
 
+  updateOrder: (id, order) => {
+    const current = get().orders.find((item) => item.id === id);
+    if (!current) return { ok: false, message: "Order not found." };
+
+    const customerName = order.customerName.trim();
+    if (!customerName) return { ok: false, message: "Customer name is required." };
+
+    const requestedItems = order.items.map((item) => ({
+      ...item,
+      quantity: Math.max(0, item.quantity),
+    }));
+
+    const now = new Date().toISOString();
+    const restoredStock = restoreOrderStock(get().containerStock, current, now);
+    for (const item of requestedItems) {
+      const stockRow = restoredStock.find((row) => row.id === item.containerId);
+      if (!stockRow) {
+        return { ok: false, message: `Choose a container for ${item.name}.` };
+      }
+      if (stockRow.remainingQuantity < item.quantity) {
+        return {
+          ok: false,
+          message: `${stockRow.containerNumber} only has ${stockRow.remainingQuantity} ${stockRow.unit || 'units'} of ${stockRow.productName} left.`,
+        };
+      }
+    }
+
+    const existingCustomer = get().customers.find((customer) => customer.name.toLowerCase() === customerName.toLowerCase());
+    if (!existingCustomer) {
+      const customerResult = get().addCustomer({
+        name: customerName,
+        note: order.customerNote,
+      });
+      if (!customerResult.ok) return { ok: false, message: customerResult.message };
+    }
+
+    set((state) => {
+      const restored = restoreOrderStock(state.containerStock, current, now);
+      const containerStock = deductOrderStock(restored, requestedItems, now);
+      return {
+        orders: state.orders.map((item) => item.id === id ? {
+          ...order,
+          id,
+          customerName,
+          items: requestedItems,
+        } : item),
+        containerStock,
+        inventory: recalculateInventory(containerStock, state.inventorySections),
+      };
+    });
+
+    queueRemoteSync(get(), set, "orders");
+    get().addLog('OUTGOING', `Order for ${customerName} was updated`);
+    return { ok: true };
+  },
+
+  deleteOrder: (id) => {
+    const order = get().orders.find((item) => item.id === id);
+    if (!order) return;
+
+    const now = new Date().toISOString();
+    set((state) => {
+      const containerStock = restoreOrderStock(state.containerStock, order, now);
+      return {
+        orders: state.orders.filter((item) => item.id !== id),
+        containerStock,
+        inventory: recalculateInventory(containerStock, state.inventorySections),
+      };
+    });
+
+    queueRemoteSync(get(), set, "all");
+    get().addLog('OUTGOING', `Order for ${order.customerName} was deleted and stock was returned`);
+  },
+
   updateOrderStatus: (id, status) => {
     set((state) => {
       const order = state.orders.find((o) => o.id === id);
@@ -564,5 +880,52 @@ export const useStore = create<GarageState>((set, get) => ({
       };
     });
     queueRemoteSync(get(), set, "inventory");
+  },
+
+  updateStockRow: (id, row) => {
+    set((state) => {
+      const now = new Date().toISOString();
+      const section = resolveSection(row.inventorySectionId, state.inventorySections);
+      const quantity = Math.max(0, row.remainingQuantity);
+      const containerStock = state.containerStock.map((stockRow) => stockRow.id === id ? {
+        ...stockRow,
+        ...row,
+        containerNumber: row.containerNumber.trim() || stockRow.containerNumber,
+        carNumber: row.carNumber.trim() || stockRow.carNumber,
+        supplierName: row.supplierName.trim() || stockRow.supplierName,
+        inventorySectionId: section.id,
+        inventorySectionTitle: section.title,
+        productName: row.productName.trim() || stockRow.productName,
+        initialQuantity: Math.max(quantity, row.initialQuantity),
+        remainingQuantity: quantity,
+        unit: row.unit?.trim() || undefined,
+        receivedAt: row.receivedAt || stockRow.receivedAt,
+        updatedAt: now,
+      } : stockRow);
+
+      return {
+        containerStock,
+        inventory: recalculateInventory(containerStock, state.inventorySections),
+      };
+    });
+
+    queueRemoteSync(get(), set, "inventory");
+    get().addLog('MANUAL', `Inventory row ${row.productName} in ${row.containerNumber} was updated`);
+  },
+
+  deleteStockRow: (id) => {
+    const stockRow = get().containerStock.find((row) => row.id === id);
+    if (!stockRow) return;
+
+    set((state) => {
+      const containerStock = state.containerStock.filter((row) => row.id !== id);
+      return {
+        containerStock,
+        inventory: recalculateInventory(containerStock, state.inventorySections),
+      };
+    });
+
+    queueRemoteSync(get(), set, "all");
+    get().addLog('MANUAL', `Inventory row ${stockRow.productName} in ${stockRow.containerNumber} was deleted`);
   },
 }));

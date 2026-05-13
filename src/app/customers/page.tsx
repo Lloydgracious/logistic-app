@@ -2,19 +2,27 @@
 
 import { useStore } from "@/lib/store";
 import { motion } from "framer-motion";
-import { ArrowRight, MapPin, Phone, Plus, StickyNote, UserPlus, Users } from "lucide-react";
+import { ArrowRight, MapPin, Phone, Plus, StickyNote, UserPlus, Users, Pencil, Trash, Save, X } from "lucide-react";
 import { FormEvent, useState } from "react";
+import { useAdminAccess } from "@/lib/use-admin-access";
 
 const formatDate = (value: string) => new Date(value).toISOString().slice(0, 10);
 
 export default function CustomersPage() {
-  const { customers, orders, addCustomer } = useStore();
+  const { customers, orders, addCustomer, updateCustomer, deleteCustomer } = useStore();
+  const isAdmin = useAdminAccess();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [note, setNote] = useState("");
   const [formError, setFormError] = useState("");
   const [notice, setNotice] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editAddress, setEditAddress] = useState("");
+  const [editNote, setEditNote] = useState("");
+  const [editError, setEditError] = useState("");
 
   const sortedCustomers = [...customers].sort((a, b) => a.name.localeCompare(b.name));
 
@@ -34,6 +42,32 @@ export default function CustomersPage() {
     setAddress("");
     setNote("");
     setNotice(`${result.customer?.name || "Customer"} is available for new orders.`);
+  };
+
+  const startEdit = (customer: typeof customers[number]) => {
+    setEditingId(customer.id);
+    setEditName(customer.name);
+    setEditPhone(customer.phone || "");
+    setEditAddress(customer.address || "");
+    setEditNote(customer.note || "");
+    setEditError("");
+  };
+
+  const saveEdit = () => {
+    if (!editingId) return;
+    const result = updateCustomer(editingId, {
+      name: editName,
+      phone: editPhone,
+      address: editAddress,
+      note: editNote,
+    });
+
+    if (!result.ok) {
+      setEditError(result.message || "Could not update customer.");
+      return;
+    }
+
+    setEditingId(null);
   };
 
   return (
@@ -119,6 +153,21 @@ export default function CustomersPage() {
                     transition={{ delay: index * 0.05 }}
                     className="saas-card p-5 rounded-none border-l-4 border-l-rose-500"
                   >
+                    {editingId === customer.id ? (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Customer name" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-sm font-bold outline-none" />
+                          <input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Phone" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-sm font-bold outline-none" />
+                        </div>
+                        <input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} placeholder="Address" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-sm font-bold outline-none" />
+                        <textarea value={editNote} onChange={(e) => setEditNote(e.target.value)} placeholder="Note" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-sm font-medium outline-none h-20 resize-none" />
+                        {editError && <div className="border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-black uppercase tracking-wider text-rose-600">{editError}</div>}
+                        <div className="flex justify-end gap-2">
+                          <button onClick={() => setEditingId(null)} className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-slate-500 font-black text-[10px] uppercase tracking-widest flex items-center gap-2"><X className="w-4 h-4" />Cancel</button>
+                          <button onClick={saveEdit} className="px-4 py-2 bg-slate-950 dark:bg-white text-white dark:text-black font-black text-[10px] uppercase tracking-widest flex items-center gap-2"><Save className="w-4 h-4" />Save</button>
+                        </div>
+                      </div>
+                    ) : (
                     <div className="flex items-start gap-4">
                       <div className="w-11 h-11 bg-slate-950 dark:bg-white text-white dark:text-black flex items-center justify-center font-black text-xs uppercase">
                         {customer.name.slice(0, 2)}
@@ -129,9 +178,21 @@ export default function CustomersPage() {
                             <h4 className="text-lg font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight outfit">{customer.name}</h4>
                             <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Created {formatDate(customer.createdAt)}</p>
                           </div>
-                          <span className="shrink-0 border border-cyan-200 bg-cyan-50 text-cyan-700 px-2 py-1 text-[10px] font-black uppercase tracking-widest">
-                            {orderCount} Orders
-                          </span>
+                          <div className="shrink-0 flex flex-col items-end gap-2">
+                            <span className="border border-cyan-200 bg-cyan-50 text-cyan-700 px-2 py-1 text-[10px] font-black uppercase tracking-widest">
+                              {orderCount} Orders
+                            </span>
+                            {isAdmin && (
+                              <div className="flex items-center gap-1">
+                                <button onClick={() => startEdit(customer)} className="p-2 border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-indigo-500 transition-colors" aria-label="Edit customer">
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => deleteCustomer(customer.id)} className="p-2 border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-rose-500 transition-colors" aria-label="Delete customer">
+                                  <Trash className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
 
                         <div className="mt-4 space-y-2 text-xs font-bold text-slate-500 dark:text-slate-400">
@@ -156,6 +217,7 @@ export default function CustomersPage() {
                         </div>
                       </div>
                     </div>
+                    )}
                   </motion.div>
                 );
               })}

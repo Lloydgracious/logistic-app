@@ -2,10 +2,11 @@
 
 import { useStore, IncomingStatus } from "@/lib/store";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, ArrowRight, Truck, Trash } from "lucide-react";
+import { Plus, ArrowRight, Truck, Trash, Pencil, Save, X } from "lucide-react";
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import { getWaitingDays } from "@/lib/utils";
+import { useAdminAccess } from "@/lib/use-admin-access";
 
 const AnimatedCar = dynamic(() => import("@/components/AnimatedCar").then(mod => mod.AnimatedCar), { ssr: false });
 
@@ -25,7 +26,8 @@ function StatusBadge({ status }: { status: IncomingStatus }) {
 }
 
 export default function IncomingPage() {
-  const { incomingList, inventorySections, updateIncomingStatus, addIncoming } = useStore();
+  const { incomingList, inventorySections, updateIncomingStatus, addIncoming, updateIncoming, deleteIncoming } = useStore();
+  const isAdmin = useAdminAccess();
   const [showAdd, setShowAdd] = useState(false);
 
   const [newCarNumber, setNewCarNumber] = useState("");
@@ -34,6 +36,14 @@ export default function IncomingPage() {
   const [newNote, setNewNote] = useState("");
   const defaultSectionId = inventorySections[0]?.id || "";
   const [items, setItems] = useState([{ name: "", containerNumber: "", quantity: "", unit: "", inventorySectionId: defaultSectionId }]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editCarNumber, setEditCarNumber] = useState("");
+  const [editSupplier, setEditSupplier] = useState("");
+  const [editArrivalDate, setEditArrivalDate] = useState("");
+  const [editDurationHours, setEditDurationHours] = useState("24");
+  const [editStatus, setEditStatus] = useState<IncomingStatus>("ON_THE_WAY");
+  const [editNote, setEditNote] = useState("");
+  const [editItems, setEditItems] = useState([{ name: "", containerNumber: "", quantity: "", unit: "", inventorySectionId: defaultSectionId }]);
 
   const addItemRow = () => setItems([...items, { name: "", containerNumber: "", quantity: "", unit: "", inventorySectionId: defaultSectionId }]);
   const removeItemRow = (idx: number) => {
@@ -91,6 +101,56 @@ export default function IncomingPage() {
   const handleNextStatus = (id: string, current: IncomingStatus) => {
     if (current === 'ON_THE_WAY') updateIncomingStatus(id, 'AT_BRIDGE');
     else if (current === 'AT_BRIDGE') updateIncomingStatus(id, 'IN_GARAGE');
+  };
+
+  const startEdit = (item: typeof incomingList[number]) => {
+    setEditingId(item.id);
+    setEditCarNumber(item.carNumber);
+    setEditSupplier(item.supplierName);
+    setEditArrivalDate(item.arrivalTime ? new Date(item.arrivalTime).toISOString().slice(0, 10) : "");
+    setEditDurationHours(String(item.durationHours || 24));
+    setEditStatus(item.status);
+    setEditNote(item.note || "");
+    setEditItems(item.items.length > 0 ? item.items.map((cargo) => ({
+      name: cargo.name,
+      containerNumber: cargo.containerNumber || item.containerNumber,
+      quantity: String(cargo.quantity),
+      unit: cargo.unit || "",
+      inventorySectionId: cargo.inventorySectionId || defaultSectionId,
+    })) : [{ name: "", containerNumber: "", quantity: "", unit: "", inventorySectionId: defaultSectionId }]);
+  };
+
+  const updateEditItemRow = (idx: number, field: 'name' | 'containerNumber' | 'quantity' | 'unit' | 'inventorySectionId', val: string) => {
+    const updated = [...editItems];
+    updated[idx] = { ...updated[idx], [field]: val };
+    setEditItems(updated);
+  };
+
+  const saveEdit = () => {
+    if (!editingId || !editCarNumber || !editSupplier || editItems.some(i => !i.name || !i.containerNumber || !i.quantity || !i.inventorySectionId)) return;
+    const firstContainerNumber = editItems[0]?.containerNumber.trim() || `CNT-${Date.now().toString().slice(-5)}`;
+
+    updateIncoming(editingId, {
+      containerNumber: firstContainerNumber,
+      carNumber: editCarNumber,
+      supplierName: editSupplier,
+      status: editStatus,
+      arrivalTime: editArrivalDate ? new Date(editArrivalDate).toISOString() : new Date().toISOString(),
+      durationHours: parseInt(editDurationHours) || 24,
+      note: editNote,
+      items: editItems.map((cargo) => {
+        const section = inventorySections.find((inventorySection) => inventorySection.id === cargo.inventorySectionId);
+        return {
+          name: cargo.name,
+          containerNumber: cargo.containerNumber.trim(),
+          quantity: parseInt(cargo.quantity) || 0,
+          unit: cargo.unit,
+          inventorySectionId: cargo.inventorySectionId,
+          inventorySectionTitle: section?.title,
+        };
+      }),
+    });
+    setEditingId(null);
   };
 
   return (
@@ -210,7 +270,45 @@ export default function IncomingPage() {
             animate={{ opacity: 1 }}
             className="saas-card p-0 rounded-none border-l-4 border-l-rose-500 overflow-hidden"
           >
-            {(() => {
+            {editingId === item.id ? (
+              <div className="p-6 space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  <input value={editCarNumber} onChange={e=>setEditCarNumber(e.target.value)} placeholder="Car number" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-sm font-bold outline-none" />
+                  <input value={editSupplier} onChange={e=>setEditSupplier(e.target.value)} placeholder="Supplier" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-sm font-bold outline-none" />
+                  <input value={editArrivalDate} type="date" onChange={e=>setEditArrivalDate(e.target.value)} className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-sm font-bold outline-none" />
+                  <input value={editDurationHours} type="number" onChange={e=>setEditDurationHours(e.target.value)} placeholder="Hours" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-sm font-bold outline-none" />
+                  <select value={editStatus} onChange={e=>setEditStatus(e.target.value as IncomingStatus)} className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-sm font-black uppercase outline-none">
+                    {Object.keys(statusConfig).map((status) => <option key={status} value={status}>{status.replaceAll("_", " ")}</option>)}
+                  </select>
+                </div>
+                <textarea value={editNote} onChange={e=>setEditNote(e.target.value)} placeholder="Notes" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-sm font-medium outline-none h-20 resize-none" />
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Cargo Rows</p>
+                    <button onClick={() => setEditItems([...editItems, { name: "", containerNumber: "", quantity: "", unit: "", inventorySectionId: defaultSectionId }])} className="text-[10px] font-black uppercase tracking-widest text-indigo-500">+ Add Row</button>
+                  </div>
+                  {editItems.map((cargo, idx) => (
+                    <div key={idx} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1.2fr_0.7fr_0.7fr_auto] gap-3">
+                      <select value={cargo.inventorySectionId} onChange={e=>updateEditItemRow(idx, "inventorySectionId", e.target.value)} className="bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-slate-800 px-3 py-2.5 text-sm font-bold outline-none">
+                        <option value="">Header</option>
+                        {inventorySections.map((section) => <option key={section.id} value={section.id}>{section.title}</option>)}
+                      </select>
+                      <input value={cargo.containerNumber} onChange={e=>updateEditItemRow(idx, "containerNumber", e.target.value)} placeholder="Container" className="bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-slate-800 px-3 py-2.5 text-sm font-bold outline-none" />
+                      <input value={cargo.name} onChange={e=>updateEditItemRow(idx, "name", e.target.value)} placeholder="Product" className="bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-slate-800 px-3 py-2.5 text-sm font-bold outline-none" />
+                      <input value={cargo.quantity} type="number" onChange={e=>updateEditItemRow(idx, "quantity", e.target.value)} placeholder="Qty" className="bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-slate-800 px-3 py-2.5 text-sm font-bold outline-none" />
+                      <input value={cargo.unit} onChange={e=>updateEditItemRow(idx, "unit", e.target.value)} placeholder="Unit" className="bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-slate-800 px-3 py-2.5 text-sm font-bold outline-none" />
+                      <button onClick={() => editItems.length > 1 && setEditItems(editItems.filter((_, itemIndex) => itemIndex !== idx))} className="p-2.5 text-slate-400 hover:text-rose-500 border border-slate-200 dark:border-slate-800">
+                        <Trash className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button onClick={() => setEditingId(null)} className="px-5 py-2.5 border border-slate-200 dark:border-slate-800 text-slate-500 font-black text-[10px] uppercase tracking-widest flex items-center gap-2"><X className="w-4 h-4" />Cancel</button>
+                  <button onClick={saveEdit} className="px-5 py-2.5 bg-slate-950 dark:bg-white text-white dark:text-black font-black text-[10px] uppercase tracking-widest flex items-center gap-2"><Save className="w-4 h-4" />Save</button>
+                </div>
+              </div>
+            ) : (() => {
               const itemContainers = Array.from(new Set(item.items.map((cargo) => cargo.containerNumber).filter(Boolean)));
               const containerSummary = itemContainers.length > 1 ? `${item.containerNumber} + ${itemContainers.length - 1} more` : item.containerNumber;
 
@@ -233,6 +331,16 @@ export default function IncomingPage() {
                   </div>
                   <div className="ml-auto flex flex-col items-end gap-2">
                     <StatusBadge status={item.status} />
+                    {isAdmin && (
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => startEdit(item)} className="p-2 border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-indigo-500 transition-colors" aria-label="Edit incoming shipment">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => deleteIncoming(item.id)} className="p-2 border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-rose-500 transition-colors" aria-label="Delete incoming shipment">
+                          <Trash className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 

@@ -6,7 +6,8 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { getWaitingDays } from "@/lib/utils";
-import { Plus, ArrowRight, ShoppingCart, CheckCircle2, Trash } from "lucide-react";
+import { Plus, ArrowRight, ShoppingCart, CheckCircle2, Trash, Pencil, Save, X } from "lucide-react";
+import { useAdminAccess } from "@/lib/use-admin-access";
 
 const AnimatedCar = dynamic(() => import("@/components/AnimatedCar").then(mod => mod.AnimatedCar), { ssr: false });
 
@@ -32,7 +33,8 @@ function StatusBadge({ status }: { status: OrderStatus }) {
 }
 
 export default function OrdersPage() {
-  const { orders, customers, updateOrderStatus, addOrder, containerStock } = useStore();
+  const { orders, customers, updateOrderStatus, addOrder, updateOrder, deleteOrder, containerStock } = useStore();
+  const isAdmin = useAdminAccess();
   const [showAdd, setShowAdd] = useState(false);
 
   const [customerName, setCustomerName] = useState("");
@@ -42,6 +44,15 @@ export default function OrdersPage() {
   const [customerNote, setCustomerNote] = useState("");
   const [items, setItems] = useState<OrderDraftItem[]>([{ stockId: "", quantity: "" }]);
   const [formError, setFormError] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editCustomerName, setEditCustomerName] = useState("");
+  const [editCarNumber, setEditCarNumber] = useState("");
+  const [editOrderDate, setEditOrderDate] = useState("");
+  const [editFinalOrderDate, setEditFinalOrderDate] = useState("");
+  const [editCustomerNote, setEditCustomerNote] = useState("");
+  const [editStatus, setEditStatus] = useState<OrderStatus>("PENDING");
+  const [editItems, setEditItems] = useState<OrderDraftItem[]>([{ stockId: "", quantity: "" }]);
+  const [editError, setEditError] = useState("");
 
   const availableStock = containerStock.filter((row) => row.remainingQuantity > 0);
   const existingCustomers = [...customers].sort((a, b) => a.name.localeCompare(b.name));
@@ -105,6 +116,66 @@ export default function OrdersPage() {
     if (current === 'PENDING') updateOrderStatus(id, 'PREPARING');
     else if (current === 'PREPARING') updateOrderStatus(id, 'ON_THE_WAY');
     else if (current === 'ON_THE_WAY') updateOrderStatus(id, 'DELIVERED');
+  };
+
+  const startEdit = (order: typeof orders[number]) => {
+    setEditingId(order.id);
+    setEditCustomerName(order.customerName);
+    setEditCarNumber(order.carNumber);
+    setEditOrderDate(order.orderTime ? new Date(order.orderTime).toISOString().slice(0, 10) : "");
+    setEditFinalOrderDate(order.finalDate ? new Date(order.finalDate).toISOString().slice(0, 10) : "");
+    setEditCustomerNote(order.customerNote || "");
+    setEditStatus(order.status);
+    setEditItems(order.items.length > 0 ? order.items.map((item) => ({
+      stockId: item.containerId || "",
+      quantity: String(item.quantity),
+    })) : [{ stockId: "", quantity: "" }]);
+    setEditError("");
+  };
+
+  const updateEditItemRow = (idx: number, field: keyof OrderDraftItem, val: string) => {
+    const updated = [...editItems];
+    updated[idx] = { ...updated[idx], [field]: val };
+    setEditItems(updated);
+    setEditError("");
+  };
+
+  const saveEdit = () => {
+    const trimmedCustomerName = editCustomerName.trim();
+    const trimmedCarNumber = editCarNumber.trim();
+
+    if (!editingId || !trimmedCustomerName || !trimmedCarNumber || editItems.some(i => !i.stockId || !i.quantity)) {
+      setEditError("Please fill client, delivery car, container product, and quantity.");
+      return;
+    }
+
+    const orderItems = editItems.map((item) => {
+      const stockRow = containerStock.find((row) => row.id === item.stockId);
+      return {
+        name: stockRow?.productName || "",
+        quantity: parseInt(item.quantity) || 0,
+        unit: stockRow?.unit,
+        containerId: stockRow?.id,
+        containerNumber: stockRow?.containerNumber,
+      };
+    });
+
+    const result = updateOrder(editingId, {
+      customerName: trimmedCustomerName,
+      carNumber: trimmedCarNumber,
+      items: orderItems,
+      status: editStatus,
+      orderTime: editOrderDate ? new Date(editOrderDate).toISOString() : new Date().toISOString(),
+      finalDate: editFinalOrderDate ? new Date(editFinalOrderDate).toISOString() : new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+      customerNote: editCustomerNote,
+    });
+
+    if (!result.ok) {
+      setEditError(result.message || "Could not update order.");
+      return;
+    }
+
+    setEditingId(null);
   };
 
   return (
@@ -233,6 +304,51 @@ export default function OrdersPage() {
             animate={{ opacity: 1 }}
             className="saas-card p-0 rounded-none border-l-4 border-l-indigo-500 relative overflow-hidden"
           >
+            {editingId === order.id ? (
+              <div className="p-6 space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  <select value={editCustomerName} onChange={(e) => setEditCustomerName(e.target.value)} className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-sm font-bold outline-none">
+                    <option value="">Choose customer</option>
+                    {existingCustomers.map((customer) => <option key={customer.id} value={customer.name}>{customer.name}</option>)}
+                  </select>
+                  <input value={editCarNumber} onChange={e=>setEditCarNumber(e.target.value)} placeholder="Vehicle" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-sm font-bold outline-none" />
+                  <input value={editOrderDate} type="date" onChange={e=>setEditOrderDate(e.target.value)} className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-sm font-bold outline-none" />
+                  <input value={editFinalOrderDate} type="date" onChange={e=>setEditFinalOrderDate(e.target.value)} className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-sm font-bold outline-none" />
+                  <select value={editStatus} onChange={e=>setEditStatus(e.target.value as OrderStatus)} className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-sm font-black uppercase outline-none">
+                    {Object.keys(statusConfig).map((status) => <option key={status} value={status}>{status.replaceAll("_", " ")}</option>)}
+                  </select>
+                </div>
+                <textarea value={editCustomerNote} onChange={e=>setEditCustomerNote(e.target.value)} placeholder="Customer note" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-sm font-medium outline-none h-20 resize-none" />
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Order Items</p>
+                    <button onClick={() => setEditItems([...editItems, { stockId: "", quantity: "" }])} className="text-[10px] font-black uppercase tracking-widest text-rose-500">+ Add Row</button>
+                  </div>
+                  {editItems.map((it, idx) => {
+                    const editStockOptions = containerStock.filter((row) => row.remainingQuantity > 0 || editItems.some((editItem) => editItem.stockId === row.id));
+                    return (
+                      <div key={idx} className="grid grid-cols-1 md:grid-cols-[1fr_140px_auto] gap-3">
+                        <select value={it.stockId} onChange={e=>updateEditItemRow(idx, "stockId", e.target.value)} className="bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-slate-800 px-3 py-2.5 text-sm font-bold outline-none">
+                          <option value="">Choose container and product</option>
+                          {editStockOptions.map((row) => (
+                            <option key={row.id} value={row.id}>{row.containerNumber} / {row.productName} / {row.remainingQuantity} {row.unit || "units"} left</option>
+                          ))}
+                        </select>
+                        <input value={it.quantity} type="number" onChange={e=>updateEditItemRow(idx, "quantity", e.target.value)} placeholder="Qty" className="bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-slate-800 px-3 py-2.5 text-sm font-bold outline-none" />
+                        <button onClick={() => editItems.length > 1 && setEditItems(editItems.filter((_, itemIndex) => itemIndex !== idx))} className="p-2.5 text-slate-400 hover:text-rose-500 border border-slate-200 dark:border-slate-800">
+                          <Trash className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                {editError && <div className="border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-black uppercase tracking-wider text-rose-600">{editError}</div>}
+                <div className="flex justify-end gap-2">
+                  <button onClick={() => setEditingId(null)} className="px-5 py-2.5 border border-slate-200 dark:border-slate-800 text-slate-500 font-black text-[10px] uppercase tracking-widest flex items-center gap-2"><X className="w-4 h-4" />Cancel</button>
+                  <button onClick={saveEdit} className="px-5 py-2.5 bg-slate-950 dark:bg-white text-white dark:text-black font-black text-[10px] uppercase tracking-widest flex items-center gap-2"><Save className="w-4 h-4" />Save</button>
+                </div>
+              </div>
+            ) : (
             <div className="p-6 flex flex-col md:flex-row justify-between gap-6">
               
               <div className="flex-1 space-y-5">
@@ -251,6 +367,16 @@ export default function OrdersPage() {
                   </div>
                   <div className="ml-auto flex flex-col items-end gap-2">
                     <StatusBadge status={order.status} />
+                    {isAdmin && (
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => startEdit(order)} className="p-2 border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-indigo-500 transition-colors" aria-label="Edit order">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => deleteOrder(order.id)} className="p-2 border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-rose-500 transition-colors" aria-label="Delete order">
+                          <Trash className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -303,6 +429,7 @@ export default function OrdersPage() {
               </div>
 
             </div>
+            )}
           </motion.div>
         ))}
       </div>

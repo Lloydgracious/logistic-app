@@ -12,6 +12,7 @@ import {
 } from "@/lib/access-control";
 import { getCurrentAccount, type CurrentAccount } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/client";
+import { AdminAccessProvider } from "@/lib/use-admin-access";
 
 function GateMessage({ title, message }: { title: string; message: string }) {
   return (
@@ -89,7 +90,7 @@ export function AccessGate({ children }: { children: React.ReactNode }) {
     }
   }, [account, isPublicPath, pathname, router]);
 
-  if (isPublicPath) return <>{children}</>;
+  if (isPublicPath) return <AdminAccessProvider isAdmin={false}>{children}</AdminAccessProvider>;
   if (!account) return <GateLoading />;
   if (account.status === "signed_out") return <GateLoading />;
   if (account.status === "disabled") {
@@ -104,5 +105,9 @@ export function AccessGate({ children }: { children: React.ReactNode }) {
     return <GateLoading />;
   }
 
-  return <>{children}</>;
+  return (
+    <AdminAccessProvider isAdmin={account.profile.role === "admin"}>
+      {children}
+    </AdminAccessProvider>
+  );
 }

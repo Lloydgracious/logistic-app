@@ -2,11 +2,23 @@
 
 import { useStore } from "@/lib/store";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Package, AlertCircle, Search, Truck } from "lucide-react";
+import { Plus, Package, AlertCircle, Search, Truck, Pencil, Trash, Save, X } from "lucide-react";
 import { useState } from "react";
+import { useAdminAccess } from "@/lib/use-admin-access";
 
 export default function InventoryPage() {
-  const { inventory, inventorySections, containerStock, addInventorySection, updateInventoryManual } = useStore();
+  const {
+    inventory,
+    inventorySections,
+    containerStock,
+    addInventorySection,
+    updateInventorySection,
+    deleteInventorySection,
+    updateInventoryManual,
+    updateStockRow,
+    deleteStockRow,
+  } = useStore();
+  const isAdmin = useAdminAccess();
   const [showAdd, setShowAdd] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -16,6 +28,19 @@ export default function InventoryPage() {
   const [itemQty, setItemQty] = useState("");
   const [itemUnit, setItemUnit] = useState("");
   const [containerNumber, setContainerNumber] = useState("");
+  const [editingRowId, setEditingRowId] = useState<string | null>(null);
+  const [editSectionId, setEditSectionId] = useState("");
+  const [editContainerNumber, setEditContainerNumber] = useState("");
+  const [editCarNumber, setEditCarNumber] = useState("");
+  const [editSupplierName, setEditSupplierName] = useState("");
+  const [editProductName, setEditProductName] = useState("");
+  const [editRemainingQty, setEditRemainingQty] = useState("");
+  const [editInitialQty, setEditInitialQty] = useState("");
+  const [editUnit, setEditUnit] = useState("");
+  const [editReceivedAt, setEditReceivedAt] = useState("");
+  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
+  const [editSectionTitle, setEditSectionTitle] = useState("");
+  const [sectionError, setSectionError] = useState("");
 
   const filteredInventory = inventory.filter((item) =>
     item.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -69,6 +94,59 @@ export default function InventoryPage() {
     if (!row) return;
     const newQty = Math.max(0, row.remainingQuantity + difference);
     updateInventoryManual(row.productName, newQty, difference, row.unit, row.containerNumber, row.inventorySectionId);
+  };
+
+  const startEditRow = (row: typeof containerStock[number]) => {
+    setEditingRowId(row.id);
+    setEditSectionId(row.inventorySectionId);
+    setEditContainerNumber(row.containerNumber);
+    setEditCarNumber(row.carNumber);
+    setEditSupplierName(row.supplierName);
+    setEditProductName(row.productName);
+    setEditRemainingQty(String(row.remainingQuantity));
+    setEditInitialQty(String(row.initialQuantity));
+    setEditUnit(row.unit || "");
+    setEditReceivedAt(row.receivedAt ? new Date(row.receivedAt).toISOString().slice(0, 10) : "");
+  };
+
+  const saveEditRow = (rowId: string) => {
+    const current = containerStock.find((row) => row.id === rowId);
+    if (!current || !editSectionId || !editContainerNumber || !editCarNumber || !editSupplierName || !editProductName) return;
+
+    const remainingQuantity = Math.max(0, parseInt(editRemainingQty) || 0);
+    updateStockRow(rowId, {
+      containerId: current.containerId,
+      containerNumber: editContainerNumber,
+      carNumber: editCarNumber,
+      supplierName: editSupplierName,
+      inventorySectionId: editSectionId,
+      inventorySectionTitle: inventorySections.find((section) => section.id === editSectionId)?.title || current.inventorySectionTitle,
+      productName: editProductName,
+      initialQuantity: Math.max(remainingQuantity, parseInt(editInitialQty) || 0),
+      remainingQuantity,
+      unit: editUnit,
+      receivedAt: editReceivedAt ? new Date(editReceivedAt).toISOString() : current.receivedAt,
+    });
+    setEditingRowId(null);
+  };
+
+  const startEditSection = (section: typeof inventorySections[number]) => {
+    setEditingSectionId(section.id);
+    setEditSectionTitle(section.title);
+    setSectionError("");
+  };
+
+  const saveEditSection = () => {
+    if (!editingSectionId) return;
+
+    const result = updateInventorySection(editingSectionId, editSectionTitle);
+    if (!result.ok) {
+      setSectionError(result.message || "Could not update header.");
+      return;
+    }
+
+    setEditingSectionId(null);
+    setEditSectionTitle("");
   };
 
   return (
@@ -175,10 +253,44 @@ export default function InventoryPage() {
             className="saas-card p-0 rounded-none border-2 border-slate-900 dark:border-zinc-800 shadow-2xl bg-white dark:bg-black overflow-hidden relative"
           >
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-6 py-5 border-b-2 border-slate-900 dark:border-white bg-slate-50 dark:bg-zinc-950">
-              <div>
-                <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight outfit italic">{section.title}</h3>
-                <p className="text-[10px] text-slate-400 uppercase tracking-[0.25em] font-black mt-1">{section.stock.length} container rows / {section.inventory.length} products</p>
+              <div className="min-w-0 flex-1">
+                {editingSectionId === section.id ? (
+                  <div className="space-y-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        value={editSectionTitle}
+                        onChange={(e) => setEditSectionTitle(e.target.value)}
+                        placeholder="Header name"
+                        className="w-full max-w-md bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-sm font-black uppercase outline-none"
+                      />
+                      <div className="flex gap-2">
+                        <button onClick={() => setEditingSectionId(null)} className="px-4 py-3 border border-slate-200 dark:border-slate-800 text-slate-500 font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
+                          <X className="w-4 h-4" /> Cancel
+                        </button>
+                        <button onClick={saveEditSection} className="px-4 py-3 bg-slate-950 dark:bg-white text-white dark:text-black font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
+                          <Save className="w-4 h-4" /> Save
+                        </button>
+                      </div>
+                    </div>
+                    {sectionError && <p className="text-[10px] font-black uppercase tracking-widest text-rose-600">{sectionError}</p>}
+                  </div>
+                ) : (
+                  <>
+                    <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight outfit italic">{section.title}</h3>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-[0.25em] font-black mt-1">{section.stock.length} container rows / {section.inventory.length} products</p>
+                  </>
+                )}
               </div>
+              {isAdmin && editingSectionId !== section.id && (
+                <div className="flex items-center gap-1">
+                  <button onClick={() => startEditSection(section)} className="w-10 h-10 rounded-none bg-white dark:bg-black hover:text-indigo-500 flex items-center justify-center transition text-slate-400 border border-slate-200 dark:border-slate-800 shadow-sm" aria-label="Edit inventory header">
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => deleteInventorySection(section.id)} className="w-10 h-10 rounded-none bg-white dark:bg-black hover:text-rose-500 flex items-center justify-center transition text-slate-400 border border-slate-200 dark:border-slate-800 shadow-sm" aria-label="Delete inventory header">
+                    <Trash className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
 
             {section.inventory.length > 0 && (
@@ -235,6 +347,48 @@ export default function InventoryPage() {
                           layout
                           className="hover:bg-slate-50 dark:hover:bg-zinc-900 transition-colors group"
                         >
+                          {editingRowId === row.id ? (
+                            <>
+                              <td className="px-6 py-6 align-top">
+                                <div className="space-y-2">
+                                  <select value={editSectionId} onChange={(e) => setEditSectionId(e.target.value)} className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs font-bold outline-none">
+                                    {inventorySections.map((sectionOption) => <option key={sectionOption.id} value={sectionOption.id}>{sectionOption.title}</option>)}
+                                  </select>
+                                  <input value={editContainerNumber} onChange={(e) => setEditContainerNumber(e.target.value)} placeholder="Container" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs font-bold outline-none" />
+                                  <input value={editCarNumber} onChange={(e) => setEditCarNumber(e.target.value)} placeholder="Car" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs font-bold outline-none" />
+                                </div>
+                              </td>
+                              <td className="px-6 py-6 align-top">
+                                <input value={editProductName} onChange={(e) => setEditProductName(e.target.value)} placeholder="Product" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs font-bold outline-none" />
+                              </td>
+                              <td className="px-6 py-6 align-top">
+                                <div className="space-y-2">
+                                  <input value={editRemainingQty} type="number" onChange={(e) => setEditRemainingQty(e.target.value)} placeholder="Left" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs font-bold outline-none" />
+                                  <input value={editUnit} onChange={(e) => setEditUnit(e.target.value)} placeholder="Unit" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs font-bold outline-none" />
+                                </div>
+                              </td>
+                              <td className="px-6 py-6 align-top">
+                                <input value={editInitialQty} type="number" onChange={(e) => setEditInitialQty(e.target.value)} placeholder="Original" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs font-bold outline-none" />
+                              </td>
+                              <td className="px-6 py-6 align-top">
+                                <div className="space-y-2">
+                                  <input value={editSupplierName} onChange={(e) => setEditSupplierName(e.target.value)} placeholder="Supplier" className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs font-bold outline-none" />
+                                  <input value={editReceivedAt} type="date" onChange={(e) => setEditReceivedAt(e.target.value)} className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 px-3 py-2 text-xs font-bold outline-none" />
+                                </div>
+                              </td>
+                              <td className="px-6 py-6 text-right align-top">
+                                <div className="flex items-center justify-end gap-1">
+                                  <button onClick={() => setEditingRowId(null)} className="w-10 h-10 rounded-none bg-white dark:bg-zinc-900 hover:text-slate-950 flex items-center justify-center transition text-slate-400 border border-slate-200 dark:border-slate-800">
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                  <button onClick={() => saveEditRow(row.id)} className="w-10 h-10 rounded-none bg-slate-950 dark:bg-white text-white dark:text-black flex items-center justify-center transition border border-slate-950 dark:border-white">
+                                    <Save className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </>
+                          ) : (
+                            <>
                           <td className="px-6 py-6">
                             <div className="font-black text-slate-800 dark:text-slate-100 outfit uppercase tracking-tight">{row.containerNumber}</div>
                             <div className="text-[9px] text-slate-400 uppercase tracking-widest font-black">Car {row.carNumber}</div>
@@ -265,8 +419,20 @@ export default function InventoryPage() {
                             <div className="flex items-center justify-end gap-1">
                               <button onClick={() => handleAdjust(row.id, -10)} className="w-10 h-10 rounded-none bg-white dark:bg-zinc-900 hover:bg-rose-500 hover:text-white flex items-center justify-center transition text-slate-600 dark:text-zinc-400 border border-slate-200 dark:border-slate-800 font-black shadow-sm">-</button>
                               <button onClick={() => handleAdjust(row.id, +10)} className="w-10 h-10 rounded-none bg-white dark:bg-zinc-900 hover:bg-emerald-500 hover:text-white flex items-center justify-center transition text-slate-600 dark:text-zinc-400 border border-slate-200 dark:border-slate-800 font-black shadow-sm">+</button>
+                              {isAdmin && (
+                                <>
+                                  <button onClick={() => startEditRow(row)} className="w-10 h-10 rounded-none bg-white dark:bg-zinc-900 hover:text-indigo-500 flex items-center justify-center transition text-slate-400 border border-slate-200 dark:border-slate-800 shadow-sm" aria-label="Edit inventory row">
+                                    <Pencil className="w-4 h-4" />
+                                  </button>
+                                  <button onClick={() => deleteStockRow(row.id)} className="w-10 h-10 rounded-none bg-white dark:bg-zinc-900 hover:text-rose-500 flex items-center justify-center transition text-slate-400 border border-slate-200 dark:border-slate-800 shadow-sm" aria-label="Delete inventory row">
+                                    <Trash className="w-4 h-4" />
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </td>
+                            </>
+                          )}
                         </motion.tr>
                       );
                     })}

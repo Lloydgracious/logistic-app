@@ -39,6 +39,24 @@ type SyncScope =
   | "logs";
 
 const DEFAULT_SECTION_ID = "section-general";
+const OPTIONAL_ARCHIVE_COLUMNS = new Set(["is_bookmarked", "completed_at", "archived_at"]);
+
+const isMissingOptionalArchiveColumnError = (message: string) => {
+  const lowerMessage = message.toLowerCase();
+  return Array.from(OPTIONAL_ARCHIVE_COLUMNS).some((column) => lowerMessage.includes(column)) &&
+    (
+      lowerMessage.includes("schema cache") ||
+      lowerMessage.includes("could not find") ||
+      lowerMessage.includes("does not exist") ||
+      lowerMessage.includes("column")
+    );
+};
+
+const stripOptionalArchiveColumns = <TableInsert extends Record<string, unknown>>(rows: TableInsert[]) => rows.map((row) =>
+  Object.fromEntries(
+    Object.entries(row).filter(([key]) => !OPTIONAL_ARCHIVE_COLUMNS.has(key))
+  ) as TableInsert
+);
 
 const resolveSection = (sectionId: string | undefined | null, sections: InventorySection[]) => {
   return sections.find((section) => section.id === sectionId) || sections[0] || {
@@ -246,11 +264,20 @@ async function deleteAll(tableName: TableName) {
   throwIfError(error);
 }
 
-async function upsertRows<TableInsert>(tableName: TableName, rows: TableInsert[]) {
+async function upsertRows<TableInsert extends Record<string, unknown>>(tableName: TableName, rows: TableInsert[]) {
   if (rows.length === 0) return;
 
   const supabase = requireClient();
   const { error } = await supabase.from(tableName).upsert(rows as never);
+  if (!error) return;
+
+  if ((tableName === "incoming_shipments" || tableName === "orders") && isMissingOptionalArchiveColumnError(error.message)) {
+    const retryRows = stripOptionalArchiveColumns(rows);
+    const { error: retryError } = await supabase.from(tableName).upsert(retryRows as never);
+    throwIfError(retryError);
+    return;
+  }
+
   throwIfError(error);
 }
 

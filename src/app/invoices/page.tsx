@@ -29,9 +29,13 @@ type InvoiceItemDraft = {
   id: string;
   name: string;
   subtitle: string;
+  pricingType: "fixed" | "weight";
   quantity: string;
   unit: string;
   rate: string;
+  weight: string;
+  weightUnit: string;
+  weightRate: string;
 };
 
 const escapeReceiptText = (value: string | number) =>
@@ -42,6 +46,32 @@ const escapeReceiptText = (value: string | number) =>
     .replace(/"/g, "&quot;");
 
 const parsePositiveNumber = (value: string | number) => Math.max(0, Number(value) || 0);
+
+const weightUnits = ["kg", "g", "lb", "ton"];
+
+const getLineTotal = (item: InvoiceItemDraft) => {
+  if (item.pricingType === "weight") {
+    return parsePositiveNumber(item.weight) * parsePositiveNumber(item.weightRate);
+  }
+
+  return parsePositiveNumber(item.quantity) * parsePositiveNumber(item.rate);
+};
+
+const getLineMeasure = (item: InvoiceItemDraft) => {
+  if (item.pricingType === "weight") {
+    return `${parsePositiveNumber(item.weight)} ${item.weightUnit || "kg"}`;
+  }
+
+  return `${parsePositiveNumber(item.quantity)} ${item.unit || "U"}`;
+};
+
+const getLineRateDisplay = (item: InvoiceItemDraft) => {
+  if (item.pricingType === "weight") {
+    return `${parsePositiveNumber(item.weightRate).toFixed(2)} / ${item.weightUnit || "kg"}`;
+  }
+
+  return parsePositiveNumber(item.rate).toFixed(2);
+};
 
 const onePagePrintStyles = `
   @page { size: A4; margin: 4mm; }
@@ -231,7 +261,7 @@ export default function InvoicePage() {
     .map((detail) => detail.trim())
     .filter(Boolean);
   const resolvedCompanyDetails = companyDetailLines.length > 0 ? companyDetailLines : companyDetails;
-  const subtotal = invoiceItems.reduce((acc, item) => acc + (parsePositiveNumber(item.quantity) * parsePositiveNumber(item.rate)), 0);
+  const subtotal = invoiceItems.reduce((acc, item) => acc + getLineTotal(item), 0);
   const taxPercentage = parsePositiveNumber(taxRate);
   const taxAmount = subtotal * (taxPercentage / 100);
   const grandTotal = subtotal + taxAmount;
@@ -252,9 +282,13 @@ export default function InvoicePage() {
       id: `${selectedOrder.id}-${index}-${Date.now()}`,
       name: item.name,
       subtitle: "Industrial Grade Asset",
+      pricingType: "fixed",
       quantity: String(item.quantity),
       unit: item.unit || "U",
       rate: defaultRateRef.current,
+      weight: String(item.quantity),
+      weightUnit: "kg",
+      weightRate: defaultRateRef.current,
     })));
   }, [selectedOrder]);
 
@@ -262,9 +296,7 @@ export default function InvoicePage() {
     if (!selectedOrder) return "";
 
     const rows = invoiceItems.map((item) => {
-      const quantity = parsePositiveNumber(item.quantity);
-      const rate = parsePositiveNumber(item.rate);
-      const lineTotal = quantity * rate;
+      const lineTotal = getLineTotal(item);
 
       return `
         <tr>
@@ -272,8 +304,8 @@ export default function InvoicePage() {
             ${escapeReceiptText(item.name || "Cargo Item")}
             ${item.subtitle.trim() ? `<span class="muted">${escapeReceiptText(item.subtitle)}</span>` : ""}
           </td>
-          <td class="compact-center" style="width: 16%;">${escapeReceiptText(quantity)} ${escapeReceiptText(item.unit || "U")}</td>
-          <td class="compact-right" style="width: 18%;">${rate.toFixed(2)}</td>
+          <td class="compact-center" style="width: 16%;">${escapeReceiptText(getLineMeasure(item))}</td>
+          <td class="compact-right" style="width: 18%;">${escapeReceiptText(getLineRateDisplay(item))}</td>
           <td class="compact-right" style="width: 20%;">${lineTotal.toFixed(2)}</td>
         </tr>
       `;
@@ -314,8 +346,8 @@ export default function InvoicePage() {
           <thead>
             <tr>
               <th>Cargo Description</th>
-              <th class="compact-center">Alloc. Qty</th>
-              <th class="compact-right">Rate (M)</th>
+              <th class="compact-center">Billable Qty</th>
+              <th class="compact-right">Rate</th>
               <th class="compact-right">Total Credits</th>
             </tr>
           </thead>
@@ -413,7 +445,7 @@ export default function InvoicePage() {
 
   const handleDefaultRateChange = (value: string) => {
     setDefaultRate(value);
-    setInvoiceItems((currentItems) => currentItems.map((item) => ({ ...item, rate: value })));
+    setInvoiceItems((currentItems) => currentItems.map((item) => ({ ...item, rate: value, weightRate: value })));
   };
 
   const updateInvoiceItem = (itemId: string, field: keyof Omit<InvoiceItemDraft, "id">, value: string) => {
@@ -429,9 +461,13 @@ export default function InvoicePage() {
         id: `draft-${Date.now()}`,
         name: "New Cargo Item",
         subtitle: "Industrial Grade Asset",
+        pricingType: "fixed",
         quantity: "1",
         unit: "U",
         rate: defaultRate,
+        weight: "1",
+        weightUnit: "kg",
+        weightRate: defaultRate,
       },
     ]);
   };
@@ -452,9 +488,13 @@ export default function InvoicePage() {
       id: `${selectedOrder.id}-${index}-${Date.now()}`,
       name: item.name,
       subtitle: "Industrial Grade Asset",
+      pricingType: "fixed",
       quantity: String(item.quantity),
       unit: item.unit || "U",
       rate: defaultRate,
+      weight: String(item.quantity),
+      weightUnit: "kg",
+      weightRate: defaultRate,
     })));
   };
 
@@ -668,29 +708,84 @@ export default function InvoicePage() {
                             aria-label="Cargo subtitle"
                             className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-3 py-2 text-slate-700 dark:text-slate-200 text-xs outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold"
                           />
-                          <div className="grid grid-cols-[1fr_76px_1fr] gap-2">
-                            <input
-                              type="number"
-                              min="0"
-                              value={item.quantity}
-                              onChange={(event) => updateInvoiceItem(item.id, "quantity", event.target.value)}
-                              aria-label="Quantity"
-                              className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-3 py-2 text-right text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold"
-                            />
-                            <input
-                              value={item.unit}
-                              onChange={(event) => updateInvoiceItem(item.id, "unit", event.target.value)}
-                              aria-label="Unit"
-                              className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-3 py-2 text-center text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold uppercase"
-                            />
-                            <input
-                              type="number"
-                              min="0"
-                              value={item.rate}
-                              onChange={(event) => updateInvoiceItem(item.id, "rate", event.target.value)}
-                              aria-label="Rate"
-                              className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-3 py-2 text-right text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold"
-                            />
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              onClick={() => updateInvoiceItem(item.id, "pricingType", "fixed")}
+                              type="button"
+                              className={`border px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-all ${item.pricingType === "fixed" ? "border-cyan-500 bg-cyan-50 text-cyan-700 dark:bg-cyan-950/20 dark:text-cyan-300" : "border-slate-200 text-slate-400 hover:border-slate-300 dark:border-slate-800"}`}
+                            >
+                              Fixed Price
+                            </button>
+                            <button
+                              onClick={() => updateInvoiceItem(item.id, "pricingType", "weight")}
+                              type="button"
+                              className={`border px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-all ${item.pricingType === "weight" ? "border-cyan-500 bg-cyan-50 text-cyan-700 dark:bg-cyan-950/20 dark:text-cyan-300" : "border-slate-200 text-slate-400 hover:border-slate-300 dark:border-slate-800"}`}
+                            >
+                              By Weight
+                            </button>
+                          </div>
+                          {item.pricingType === "weight" ? (
+                            <div className="grid grid-cols-[1fr_82px_1fr] gap-2">
+                              <input
+                                type="number"
+                                min="0"
+                                value={item.weight}
+                                onChange={(event) => updateInvoiceItem(item.id, "weight", event.target.value)}
+                                aria-label="Weight"
+                                className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-3 py-2 text-right text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold"
+                              />
+                              <select
+                                value={item.weightUnit}
+                                onChange={(event) => updateInvoiceItem(item.id, "weightUnit", event.target.value)}
+                                aria-label="Weight unit"
+                                className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-2 py-2 text-center text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold uppercase"
+                              >
+                                {weightUnits.map((unit) => (
+                                  <option key={unit} value={unit}>{unit}</option>
+                                ))}
+                              </select>
+                              <input
+                                type="number"
+                                min="0"
+                                value={item.weightRate}
+                                onChange={(event) => updateInvoiceItem(item.id, "weightRate", event.target.value)}
+                                aria-label="Rate per weight unit"
+                                className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-3 py-2 text-right text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold"
+                              />
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-[1fr_76px_1fr] gap-2">
+                              <input
+                                type="number"
+                                min="0"
+                                value={item.quantity}
+                                onChange={(event) => updateInvoiceItem(item.id, "quantity", event.target.value)}
+                                aria-label="Quantity"
+                                className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-3 py-2 text-right text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold"
+                              />
+                              <input
+                                value={item.unit}
+                                onChange={(event) => updateInvoiceItem(item.id, "unit", event.target.value)}
+                                aria-label="Unit"
+                                className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-3 py-2 text-center text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold uppercase"
+                              />
+                              <input
+                                type="number"
+                                min="0"
+                                value={item.rate}
+                                onChange={(event) => updateInvoiceItem(item.id, "rate", event.target.value)}
+                                aria-label="Rate"
+                                className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-3 py-2 text-right text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold"
+                              />
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-zinc-900/40 px-3 py-2">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                              {item.pricingType === "weight" ? `Rate per ${item.weightUnit || "kg"}` : "Line Total"}
+                            </span>
+                            <span className="text-xs font-black text-slate-900 dark:text-white tabular-nums">
+                              {getLineTotal(item).toFixed(2)}
+                            </span>
                           </div>
                         </div>
                       ))}
@@ -803,15 +898,14 @@ export default function InvoicePage() {
                           <thead>
                              <tr className="border-b-2 border-slate-900 dark:border-white">
                                 <th className="py-4 text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Cargo Description</th>
-                                <th className="py-4 text-center text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Alloc. Qty</th>
-                                <th className="py-4 text-right text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Rate (M)</th>
+                                <th className="py-4 text-center text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Billable Qty</th>
+                                <th className="py-4 text-right text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Rate</th>
                                 <th className="py-4 text-right text-[10px] font-black uppercase tracking-[0.4em] text-cyan-600">Total Credits</th>
                              </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100 dark:divide-zinc-900">
                              {invoiceItems.map((item) => {
-                              const quantity = parsePositiveNumber(item.quantity);
-                              const rate = parsePositiveNumber(item.rate);
+                              const lineTotal = getLineTotal(item);
 
                               return (
                                 <tr key={item.id}>
@@ -822,13 +916,13 @@ export default function InvoicePage() {
                                       )}
                                    </td>
                                    <td className="py-6 text-center">
-                                      <span className="receipt-cell text-sm font-black text-slate-600 dark:text-zinc-400 uppercase">{quantity} <span className="text-[9px] text-slate-400 ml-1">{item.unit || "U"}</span></span>
+                                      <span className="receipt-cell text-sm font-black text-slate-600 dark:text-zinc-400 uppercase">{getLineMeasure(item)}</span>
                                    </td>
                                    <td className="py-6 text-right">
-                                      <span className="receipt-cell text-sm font-black text-slate-600 dark:text-zinc-400">{rate.toFixed(2)}</span>
+                                      <span className="receipt-cell text-sm font-black text-slate-600 dark:text-zinc-400">{getLineRateDisplay(item)}</span>
                                    </td>
                                    <td className="py-6 text-right">
-                                      <span className="receipt-cell text-sm font-black text-slate-900 dark:text-white">{(quantity * rate).toFixed(2)}</span>
+                                      <span className="receipt-cell text-sm font-black text-slate-900 dark:text-white">{lineTotal.toFixed(2)}</span>
                                    </td>
                                 </tr>
                               );

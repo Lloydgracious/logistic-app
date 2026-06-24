@@ -3,7 +3,7 @@ import { useStore } from "@/lib/store";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Receipt, FileText, Printer, Download, ArrowRight, User, Calendar, BadgeDollarSign, Save, Trash2, Plus, RotateCcw, X, MapPin, Phone, Mail, CreditCard } from "lucide-react";
+import { FileText, Printer, Download, User, Calendar, BadgeDollarSign, Save, Trash2, Plus, RotateCcw, X, MapPin, Phone, Mail, CreditCard } from "lucide-react";
 
 const companyDetails = [
   "No.(C/21), Qtr 1, Near Chit Kyi Yay Bridge, Ba Yint Naung Road, Myawaddy.",
@@ -21,6 +21,7 @@ type SavedReceipt = {
   documentDate: string;
   customerName: string;
   total: number;
+  currencyLabel?: string;
   savedAt: string;
   html: string;
 };
@@ -63,7 +64,7 @@ const getLineQuantityDisplay = (item: InvoiceItemDraft) => {
   return parsePositiveNumber(item.quantity).toString();
 };
 
-const getLineWeightDisplay = (item: InvoiceItemDraft) => {
+const getLineUnitDisplay = (item: InvoiceItemDraft) => {
   if (item.pricingType === "weight") {
     return `${parsePositiveNumber(item.weight).toFixed(2)} ${(item.weightUnit || "kg").toUpperCase()}`;
   }
@@ -78,6 +79,19 @@ const getLineRateDisplay = (item: InvoiceItemDraft) => {
 
   return parsePositiveNumber(item.rate).toFixed(2);
 };
+
+const createDraftInvoiceItem = (id = "draft-line-1", rate = "100"): InvoiceItemDraft => ({
+  id,
+  name: "New Cargo Item",
+  subtitle: "Industrial Grade Asset",
+  pricingType: "fixed",
+  quantity: "1",
+  unit: "U",
+  rate,
+  weight: "1",
+  weightUnit: "kg",
+  weightRate: rate,
+});
 
 const formatInvoiceDate = (dateValue: string) => {
   const date = new Date(`${dateValue}T00:00:00`);
@@ -221,10 +235,11 @@ const onePagePrintStyles = `
 export default function InvoicePage() {
   const { orders } = useStore();
   const activeOrders = orders.filter((order) => !order.archivedAt);
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [selectedOrderId] = useState<string | null>(null);
   const [documentDate, setDocumentDate] = useState("");
   const [manifestId, setManifestId] = useState("");
   const [defaultRate, setDefaultRate] = useState("100");
+  const [currencyLabel, setCurrencyLabel] = useState("Kyat");
   const [billingName, setBillingName] = useState("");
   const [billingAddress, setBillingAddress] = useState("");
   const [billingPhone, setBillingPhone] = useState("");
@@ -234,7 +249,7 @@ export default function InvoicePage() {
   const [companySubtitle, setCompanySubtitle] = useState("Kay Thi (Myawady) Trading Company Limited");
   const [companyDetailText, setCompanyDetailText] = useState(companyDetails.join("\n"));
   const [taxRate, setTaxRate] = useState("0");
-  const [invoiceItems, setInvoiceItems] = useState<InvoiceItemDraft[]>([]);
+  const [invoiceItems, setInvoiceItems] = useState<InvoiceItemDraft[]>(() => [createDraftInvoiceItem()]);
   const [savedReceipts, setSavedReceipts] = useState<SavedReceipt[]>([]);
   const defaultRateRef = useRef(defaultRate);
   const initializedOrderIdRef = useRef<string | null>(null);
@@ -261,6 +276,7 @@ export default function InvoicePage() {
   const resolvedBillingPhone = billingPhone.trim();
   const resolvedBillingEmail = billingEmail.trim();
   const resolvedPaymentMethod = paymentMethod.trim() || "Bank Transfer / Cash / Other";
+  const resolvedCurrencyLabel = currencyLabel.trim() || "Kyat";
   const resolvedCompanyName = companyName.trim() || "KT Logistic & Trading";
   const resolvedCompanySubtitle = companySubtitle.trim() || "Kay Thi (Myawady) Trading Company Limited";
   const companyDetailLines = companyDetailText
@@ -276,11 +292,6 @@ export default function InvoicePage() {
   useEffect(() => {
     if (!selectedOrder) {
       initializedOrderIdRef.current = null;
-      setBillingName("");
-      setBillingAddress("");
-      setBillingPhone("");
-      setBillingEmail("");
-      setInvoiceItems([]);
       return;
     }
 
@@ -306,8 +317,6 @@ export default function InvoicePage() {
   }, [selectedOrder]);
 
   const buildCurrentReceiptHtml = () => {
-    if (!selectedOrder) return "";
-
     const rows = invoiceItems.map((item) => {
       const lineTotal = getLineTotal(item);
 
@@ -318,9 +327,9 @@ export default function InvoicePage() {
             <strong>${escapeReceiptText(item.name || "Cargo Item")}</strong>
             ${item.subtitle.trim() ? `<span>${escapeReceiptText(item.subtitle)}</span>` : ""}
           </td>
-          <td class="kt-print-center" style="width: 17%;">${escapeReceiptText(getLineWeightDisplay(item))}</td>
-          <td class="kt-print-center" style="width: 18%;">$ ${escapeReceiptText(getLineRateDisplay(item))}</td>
-          <td class="kt-print-center" style="width: 16%;">$ ${lineTotal.toFixed(2)}</td>
+          <td class="kt-print-center" style="width: 17%;">${escapeReceiptText(getLineUnitDisplay(item))}</td>
+          <td class="kt-print-center" style="width: 18%;">${escapeReceiptText(resolvedCurrencyLabel)} ${escapeReceiptText(getLineRateDisplay(item))}</td>
+          <td class="kt-print-center" style="width: 16%;">${escapeReceiptText(resolvedCurrencyLabel)} ${lineTotal.toFixed(2)}</td>
         </tr>
       `;
     }).join("");
@@ -372,7 +381,7 @@ export default function InvoicePage() {
               <tr>
                 <th>Qty</th>
                 <th>Description</th>
-                <th>Weight</th>
+                <th>Unit</th>
                 <th>Unit Price</th>
                 <th>Total</th>
               </tr>
@@ -388,9 +397,9 @@ export default function InvoicePage() {
             </div>
             <div class="kt-print-divider"></div>
             <div class="kt-print-summary">
-              <div class="kt-print-summary-row"><span>SUBTOTAL</span><span>$ ${subtotal.toFixed(2)}</span></div>
-              <div class="kt-print-summary-row"><span>TAX (${taxPercentage.toFixed(2)}%)</span><span>$ ${taxAmount.toFixed(2)}</span></div>
-              <div class="kt-print-grand"><span>Grand Total</span><span>$ ${grandTotal.toFixed(2)}</span></div>
+              <div class="kt-print-summary-row"><span>SUBTOTAL</span><span>${escapeReceiptText(resolvedCurrencyLabel)} ${subtotal.toFixed(2)}</span></div>
+              <div class="kt-print-summary-row"><span>TAX (${taxPercentage.toFixed(2)}%)</span><span>${escapeReceiptText(resolvedCurrencyLabel)} ${taxAmount.toFixed(2)}</span></div>
+              <div class="kt-print-grand"><span>Grand Total</span><span>${escapeReceiptText(resolvedCurrencyLabel)} ${grandTotal.toFixed(2)}</span></div>
             </div>
           </section>
 
@@ -406,15 +415,15 @@ export default function InvoicePage() {
   };
 
   const saveCurrentReceipt = () => {
-    if (!selectedOrder) return null;
-
+    const receiptOrderId = selectedOrder?.id || "draft";
     const receipt: SavedReceipt = {
-      id: `${selectedOrder.id}:${resolvedManifestId}:${resolvedDocumentDate}`,
-      orderId: selectedOrder.id,
+      id: `${receiptOrderId}:${resolvedManifestId}:${resolvedDocumentDate}:${Date.now()}`,
+      orderId: receiptOrderId,
       manifestId: resolvedManifestId,
       documentDate: resolvedDocumentDate,
       customerName: resolvedBillingName,
       total: grandTotal,
+      currencyLabel: resolvedCurrencyLabel,
       savedAt: new Date().toISOString(),
       html: buildCurrentReceiptHtml(),
     };
@@ -466,11 +475,6 @@ export default function InvoicePage() {
     printWindow.document.close();
   };
 
-  const handleSelectOrder = (orderId: string) => {
-    setSelectedOrderId(orderId);
-    setManifestId((current) => current || `ID-${orderId.toUpperCase()}`);
-  };
-
   const handleDefaultRateChange = (value: string) => {
     setDefaultRate(value);
     setInvoiceItems((currentItems) => currentItems.map((item) => ({ ...item, rate: value, weightRate: value })));
@@ -505,12 +509,26 @@ export default function InvoicePage() {
   };
 
   const resetBillDraft = () => {
-    if (!selectedOrder) return;
+    if (!selectedOrder) {
+      setBillingName("");
+      setBillingAddress("");
+      setBillingPhone("");
+      setBillingEmail("");
+      setCurrencyLabel("Kyat");
+      setPaymentMethod("Bank Transfer / Cash / Other");
+      setCompanyName("KT Logistic & Trading");
+      setCompanySubtitle("Kay Thi (Myawady) Trading Company Limited");
+      setCompanyDetailText(companyDetails.join("\n"));
+      setTaxRate("0");
+      setInvoiceItems([createDraftInvoiceItem("draft-line-1", defaultRate)]);
+      return;
+    }
 
     setBillingName(selectedOrder.customerName);
     setBillingAddress(selectedOrder.customerNote || "");
     setBillingPhone("");
     setBillingEmail("");
+    setCurrencyLabel("Kyat");
     setPaymentMethod("Bank Transfer / Cash / Other");
     setCompanyName("KT Logistic & Trading");
     setCompanySubtitle("Kay Thi (Myawady) Trading Company Limited");
@@ -531,8 +549,6 @@ export default function InvoicePage() {
   };
 
   const handleExportPdf = () => {
-    if (!selectedOrder) return;
-
     saveCurrentReceipt();
     openReceiptPrintWindow(buildCurrentReceiptHtml(), resolvedManifestId);
   };
@@ -552,22 +568,19 @@ export default function InvoicePage() {
         <div className="flex items-center gap-2">
            <button 
              onClick={handleExportPdf} 
-             disabled={!selectedOrder}
-             className="flex items-center gap-2 bg-slate-900 text-white px-5 py-3 rounded-none font-black text-[10px] uppercase tracking-widest hover:bg-cyan-600 disabled:opacity-30 disabled:bg-slate-400 transition-all shadow-xl"
+             className="flex items-center gap-2 bg-slate-900 text-white px-5 py-3 rounded-none font-black text-[10px] uppercase tracking-widest hover:bg-cyan-600 transition-all shadow-xl"
            >
              <Printer className="w-4 h-4" /> Print Receipt
            </button>
            <button 
              onClick={saveCurrentReceipt}
-             disabled={!selectedOrder}
-             className="flex items-center gap-2 bg-cyan-600 text-white px-5 py-3 rounded-none font-black text-[10px] uppercase tracking-widest hover:bg-slate-900 disabled:opacity-30 disabled:bg-slate-400 transition-all shadow-xl"
+             className="flex items-center gap-2 bg-cyan-600 text-white px-5 py-3 rounded-none font-black text-[10px] uppercase tracking-widest hover:bg-slate-900 transition-all shadow-xl"
            >
              <Save className="w-4 h-4" /> Save Receipt
            </button>
            <button 
              onClick={handleExportPdf}
-             disabled={!selectedOrder}
-             className="flex items-center gap-2 bg-white dark:bg-zinc-900 text-slate-900 dark:text-white border-2 border-slate-900 dark:border-white px-5 py-3 rounded-none font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 disabled:opacity-30 transition-all shadow-lg"
+             className="flex items-center gap-2 bg-white dark:bg-zinc-900 text-slate-900 dark:text-white border-2 border-slate-900 dark:border-white px-5 py-3 rounded-none font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all shadow-lg"
            >
              <Download className="w-4 h-4" /> Export PDF
            </button>
@@ -576,30 +589,8 @@ export default function InvoicePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* Order Selector Pane */}
+        {/* Billing Setup Pane */}
         <div className="lg:col-span-4 space-y-4">
-           <div className="saas-card p-6 rounded-none border-t-4 border-t-cyan-500 bg-white dark:bg-black overflow-hidden relative">
-              <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 border-b border-slate-100 dark:border-zinc-800 pb-3">Available Orders</h3>
-              <div className="space-y-3">
-                 {activeOrders.map((order) => (
-                    <button 
-                      key={order.id} 
-                      onClick={() => handleSelectOrder(order.id)}
-                      className={`w-full text-left p-4 rounded-none border-2 transition-all flex items-center justify-between group ${selectedOrderId === order.id ? 'border-cyan-500 bg-cyan-50/50' : 'border-slate-100 dark:border-zinc-800 hover:border-slate-200'}`}
-                    >
-                       <div>
-                          <p className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-tight group-hover:text-cyan-600 transition-colors">{order.customerName}</p>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5 tracking-tighter">REF: {order.id}</p>
-                       </div>
-                       <ArrowRight className={`w-4 h-4 ${selectedOrderId === order.id ? 'text-cyan-600' : 'text-slate-200'}`} />
-                    </button>
-                 ))}
-                 {activeOrders.length === 0 && (
-                    <p className="text-center py-10 text-xs text-slate-400 font-black uppercase tracking-widest">No active orders found.</p>
-                 )}
-              </div>
-           </div>
-
            <div className="saas-card p-6 rounded-none border border-cyan-100 dark:border-cyan-900/40 bg-cyan-50/30 dark:bg-cyan-950/10">
               <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 border-b border-cyan-100 dark:border-cyan-900/40 pb-3">Document Setup</h3>
               <div className="space-y-4">
@@ -627,10 +618,10 @@ export default function InvoicePage() {
                       className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold"
                     />
                  </div>
-                 <div className="space-y-1.5">
-                    <label className="flex items-center gap-2 text-[10px] text-slate-500 uppercase font-black tracking-wider">
-                       <BadgeDollarSign className="w-3.5 h-3.5 text-cyan-600" />
-                       Default Price Rate
+                  <div className="space-y-1.5">
+                     <label className="flex items-center gap-2 text-[10px] text-slate-500 uppercase font-black tracking-wider">
+                        <BadgeDollarSign className="w-3.5 h-3.5 text-cyan-600" />
+                        Default Price Rate
                     </label>
                     <input
                       type="number"
@@ -639,11 +630,22 @@ export default function InvoicePage() {
                       onChange={(event) => handleDefaultRateChange(event.target.value)}
                       placeholder="100"
                       className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold"
+                     />
+                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Applies to all current items. You can edit each item rate below.</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-2 text-[10px] text-slate-500 uppercase font-black tracking-wider">
+                      <BadgeDollarSign className="w-3.5 h-3.5 text-cyan-600" />
+                      Currency
+                    </label>
+                    <input
+                      value={currencyLabel}
+                      onChange={(event) => setCurrencyLabel(event.target.value)}
+                      placeholder="Kyat"
+                      className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-4 py-3 text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold"
                     />
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Applies to all current items. You can edit each item rate below.</p>
-                 </div>
-                 {selectedOrder && (
-                   <div className="space-y-5 border-t border-cyan-100 dark:border-cyan-900/40 pt-4">
+                  </div>
+                    <div className="space-y-5 border-t border-cyan-100 dark:border-cyan-900/40 pt-4">
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-[10px] text-slate-500 uppercase font-black tracking-wider">Editable Bill Details</p>
                       <button
@@ -803,7 +805,7 @@ export default function InvoicePage() {
                               type="button"
                               className={`border px-3 py-2 text-[9px] font-black uppercase tracking-widest transition-all ${item.pricingType === "weight" ? "border-cyan-500 bg-cyan-50 text-cyan-700 dark:bg-cyan-950/20 dark:text-cyan-300" : "border-slate-200 text-slate-400 hover:border-slate-300 dark:border-slate-800"}`}
                             >
-                              By Weight
+                              By Unit
                             </button>
                           </div>
                           {item.pricingType === "weight" ? (
@@ -813,13 +815,13 @@ export default function InvoicePage() {
                                 min="0"
                                 value={item.weight}
                                 onChange={(event) => updateInvoiceItem(item.id, "weight", event.target.value)}
-                                aria-label="Weight"
+                                aria-label="Unit amount"
                                 className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-3 py-2 text-right text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold"
                               />
                               <select
                                 value={item.weightUnit}
                                 onChange={(event) => updateInvoiceItem(item.id, "weightUnit", event.target.value)}
-                                aria-label="Weight unit"
+                                aria-label="Unit label"
                                 className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-2 py-2 text-center text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold uppercase"
                               >
                                 {weightUnits.map((unit) => (
@@ -831,7 +833,7 @@ export default function InvoicePage() {
                                 min="0"
                                 value={item.weightRate}
                                 onChange={(event) => updateInvoiceItem(item.id, "weightRate", event.target.value)}
-                                aria-label="Rate per weight unit"
+                                aria-label="Rate per unit"
                                 className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-3 py-2 text-right text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold"
                               />
                             </div>
@@ -859,22 +861,21 @@ export default function InvoicePage() {
                                 aria-label="Rate"
                                 className="w-full bg-white dark:bg-black border border-slate-200 dark:border-slate-800 rounded-none px-3 py-2 text-right text-slate-800 dark:text-slate-100 text-sm outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all font-bold"
                               />
-                            </div>
-                          )}
+                              </div>
+                            )}
                           <div className="flex items-center justify-between border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-zinc-900/40 px-3 py-2">
                             <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
                               {item.pricingType === "weight" ? `Rate per ${item.weightUnit || "kg"}` : "Line Total"}
                             </span>
                             <span className="text-xs font-black text-slate-900 dark:text-white tabular-nums">
-                              {getLineTotal(item).toFixed(2)}
+                              {resolvedCurrencyLabel} {getLineTotal(item).toFixed(2)}
                             </span>
                           </div>
                         </div>
                       ))}
                     </div>
                    </div>
-                 )}
-              </div>
+               </div>
            </div>
 
            <div className="saas-card p-6 rounded-none border border-slate-100 dark:border-zinc-800 bg-white dark:bg-black">
@@ -886,7 +887,7 @@ export default function InvoicePage() {
                       <div className="min-w-0">
                         <p className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-tight truncate">{receipt.customerName}</p>
                         <p className="text-[10px] text-cyan-600 font-black uppercase tracking-widest mt-0.5">{receipt.manifestId}</p>
-                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">{receipt.documentDate} / {receipt.total.toFixed(2)} credits</p>
+                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">{receipt.documentDate} / {receipt.currencyLabel || "Kyat"} {receipt.total.toFixed(2)}</p>
                       </div>
                       <button
                         onClick={() => deleteSavedReceipt(receipt.id)}
@@ -923,9 +924,8 @@ export default function InvoicePage() {
         {/* Invoice Preview Pane */}
         <div className="lg:col-span-8">
            <AnimatePresence mode="wait">
-              {selectedOrder ? (
                  <motion.div 
-                   key={selectedOrder.id}
+                   key={selectedOrder?.id || "draft-invoice"}
                    initial={{ opacity: 0, y: 20 }}
                    animate={{ opacity: 1, y: 0 }}
                    exit={{ opacity: 0, y: -20 }}
@@ -993,7 +993,7 @@ export default function InvoicePage() {
                             <tr>
                               <th className="w-[13%] bg-[#071947] px-4 py-4 text-center text-white font-black uppercase">Qty</th>
                               <th className="w-[36%] bg-[#071947] px-4 py-4 text-center text-white font-black uppercase">Description</th>
-                              <th className="w-[17%] bg-[#071947] px-4 py-4 text-center text-white font-black uppercase">Weight</th>
+                              <th className="w-[17%] bg-[#071947] px-4 py-4 text-center text-white font-black uppercase">Unit</th>
                               <th className="w-[18%] bg-[#071947] px-4 py-4 text-center text-white font-black uppercase">Unit Price</th>
                               <th className="w-[16%] bg-[#cf1126] px-4 py-4 text-center text-white font-black uppercase">Total</th>
                             </tr>
@@ -1011,9 +1011,9 @@ export default function InvoicePage() {
                                       <p className="mt-2 text-xs leading-relaxed text-slate-600">{item.subtitle}</p>
                                     )}
                                   </td>
-                                  <td className="border-b border-r border-slate-200 px-4 py-7 text-center font-semibold">{getLineWeightDisplay(item)}</td>
-                                  <td className="border-b border-r border-slate-200 px-4 py-7 text-center font-semibold">$ {getLineRateDisplay(item)}</td>
-                                  <td className="border-b border-slate-200 px-4 py-7 text-center font-black text-[#c3192d]">$ {lineTotal.toFixed(2)}</td>
+                                  <td className="border-b border-r border-slate-200 px-4 py-7 text-center font-semibold">{getLineUnitDisplay(item)}</td>
+                                  <td className="border-b border-r border-slate-200 px-4 py-7 text-center font-semibold">{resolvedCurrencyLabel} {getLineRateDisplay(item)}</td>
+                                  <td className="border-b border-slate-200 px-4 py-7 text-center font-black text-[#c3192d]">{resolvedCurrencyLabel} {lineTotal.toFixed(2)}</td>
                                 </tr>
                               );
                             })}
@@ -1031,15 +1031,15 @@ export default function InvoicePage() {
                         <div className="space-y-3">
                           <div className="grid grid-cols-[1fr_auto] gap-6 text-sm">
                             <span>SUBTOTAL</span>
-                            <span>$ {subtotal.toFixed(2)}</span>
+                            <span>{resolvedCurrencyLabel} {subtotal.toFixed(2)}</span>
                           </div>
                           <div className="grid grid-cols-[1fr_auto] gap-6 border-b border-slate-300 pb-4 text-sm">
                             <span>TAX ({taxPercentage.toFixed(2)}%)</span>
-                            <span>$ {taxAmount.toFixed(2)}</span>
+                            <span>{resolvedCurrencyLabel} {taxAmount.toFixed(2)}</span>
                           </div>
                           <div className="grid grid-cols-[1fr_auto] items-center text-white">
                             <span className="bg-[#071947] px-4 py-3 text-lg font-black uppercase">Grand Total</span>
-                            <span className="bg-[#cf1126] px-4 py-3 text-2xl font-black tabular-nums">$ {grandTotal.toFixed(2)}</span>
+                            <span className="bg-[#cf1126] px-4 py-3 text-2xl font-black tabular-nums">{resolvedCurrencyLabel} {grandTotal.toFixed(2)}</span>
                           </div>
                         </div>
                       </div>
@@ -1048,12 +1048,6 @@ export default function InvoicePage() {
                     </div>
 
                  </motion.div>
-              ) : (
-                 <div className="h-[600px] flex flex-col items-center justify-center bg-slate-50 dark:bg-zinc-900/20 border-2 border-dashed border-slate-200 dark:border-zinc-800 rounded-none text-slate-400">
-                    <Receipt className="w-16 h-16 mb-6 opacity-20" />
-                    <p className="text-xs font-black uppercase tracking-widest">Select an order from the list to forge a billing manifest.</p>
-                 </div>
-              )}
            </AnimatePresence>
         </div>
 

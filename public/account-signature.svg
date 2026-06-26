@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 150" role="img" aria-labelledby="title desc">
+  <title id="title">Account signature</title>
+  <desc id="desc">Stylized account signature mark</desc>
+  <path d="M58 91 C72 41 108 35 111 65 C114 96 73 119 71 85 C69 55 107 49 140 80 C159 97 176 111 188 87 C199 65 177 57 157 86 C143 106 160 113 184 96 C214 75 234 47 266 23" fill="none" stroke="#26226f" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M87 113 C112 92 147 66 174 42" fill="none" stroke="#26226f" stroke-width="5" stroke-linecap="round"/>
+</svg>

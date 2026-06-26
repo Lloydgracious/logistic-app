@@ -12,6 +12,12 @@ const companyDetails = [
   "kay.t.win67@gmail.com",
 ];
 
+const accountSignature = {
+  name: "Daw Eain Dray Kyaw Naing",
+  title: "Director",
+  company: "Kay Thi (Myawady) Co.,ltd",
+};
+
 const SAVED_RECEIPTS_KEY = "kt-logistic-saved-receipts";
 
 type SavedReceipt = {
@@ -107,8 +113,8 @@ const formatInvoiceDate = (dateValue: string) => {
 const onePagePrintStyles = `
   @page { size: A4; margin: 4mm; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; box-sizing: border-box; }
-  html, body { margin: 0; background: white; color: #111827; font-family: Arial, sans-serif; }
-  body { overflow: hidden; }
+  html, body { width: 202mm; height: 289mm; margin: 0; background: white; color: #111827; font-family: Arial, sans-serif; }
+  body { overflow: hidden; position: relative; }
   .kt-print-invoice {
     width: 194mm;
     min-height: 277mm;
@@ -117,6 +123,7 @@ const onePagePrintStyles = `
     background: #fff;
     position: relative;
     overflow: hidden;
+    transform-origin: top left;
   }
   .kt-print-invoice:before,
   .kt-print-invoice:after {
@@ -206,6 +213,11 @@ const onePagePrintStyles = `
   .kt-print-payment h3 { margin: 0 0 2mm; color: #071947; font-size: 11px; font-weight: 900; text-transform: uppercase; }
   .kt-print-payment .red-short { width: 8mm; height: 0.7mm; background: #cf1126; margin-bottom: 4mm; }
   .kt-print-payment p { margin: 0; font-size: 9px; color: #111827; }
+  .kt-print-signature { margin-top: 8mm; width: 62mm; color: #071947; text-align: center; }
+  .kt-print-signature h3 { margin: 0 0 2mm; color: #111827; font-family: Georgia, 'Times New Roman', serif; font-size: 18px; line-height: 1.05; font-weight: 400; text-transform: none; }
+  .kt-print-signature img { display: block; width: 42mm; height: auto; margin: 0 auto -1mm; }
+  .kt-print-signature strong,
+  .kt-print-signature span { display: block; font-size: 8.5px; line-height: 1.35; font-weight: 900; color: #15256f; }
   .kt-print-summary { display: grid; gap: 3mm; }
   .kt-print-summary-row {
     display: grid;
@@ -229,6 +241,16 @@ const onePagePrintStyles = `
     background: #fff !important;
     color: #111827 !important;
     overflow: hidden !important;
+  }
+  @media print {
+    html, body { width: 202mm; height: 289mm; overflow: hidden !important; }
+    .kt-print-invoice {
+      position: absolute !important;
+      left: 4mm !important;
+      top: 0 !important;
+      margin: 0 !important;
+      transform: scale(var(--kt-print-scale, 1));
+    }
   }
 `;
 
@@ -394,6 +416,13 @@ export default function InvoicePage() {
               <h3>Payment Method</h3>
               <div class="red-short"></div>
               <p>${escapeReceiptText(resolvedPaymentMethod)}</p>
+              <div class="kt-print-signature">
+                <h3>ACCOUNT Signature</h3>
+                <img src="/account-signature.svg" alt="Account signature" />
+                <strong>${escapeReceiptText(accountSignature.name)}</strong>
+                <span>${escapeReceiptText(accountSignature.title)}</span>
+                <span>${escapeReceiptText(accountSignature.company)}</span>
+              </div>
             </div>
             <div class="kt-print-divider"></div>
             <div class="kt-print-summary">
@@ -464,9 +493,33 @@ export default function InvoicePage() {
         <body>
           ${html}
           <script>
+            function applyOnePageInvoiceScale() {
+              var invoice = document.querySelector(".kt-print-invoice");
+              if (!invoice) return;
+
+              var probe = document.createElement("div");
+              probe.style.position = "absolute";
+              probe.style.visibility = "hidden";
+              probe.style.pointerEvents = "none";
+              probe.style.height = "277mm";
+              document.body.appendChild(probe);
+
+              invoice.style.setProperty("--kt-print-scale", "1");
+              var availableHeight = probe.getBoundingClientRect().height;
+              var invoiceHeight = invoice.scrollHeight;
+              var scale = Math.min(1, availableHeight / Math.max(invoiceHeight, 1));
+              invoice.style.setProperty("--kt-print-scale", String(Math.max(scale, 0.01)));
+              probe.remove();
+            }
+
+            window.addEventListener("beforeprint", applyOnePageInvoiceScale);
             window.addEventListener("load", function () {
               window.focus();
-              window.print();
+              applyOnePageInvoiceScale();
+              setTimeout(function () {
+                applyOnePageInvoiceScale();
+                window.print();
+              }, 150);
             });
           </script>
         </body>
@@ -1026,6 +1079,13 @@ export default function InvoicePage() {
                           <h3 className="text-sm font-black uppercase text-[#071947]">Payment Method</h3>
                           <div className="w-8 h-1 bg-[#cf1126] my-3" />
                           <p className="text-sm font-medium text-slate-900">{resolvedPaymentMethod}</p>
+                          <div className="mt-10 w-72 max-w-full text-center text-[#15256f]">
+                            <h3 className="font-serif text-3xl font-normal leading-none text-slate-950">ACCOUNT Signature</h3>
+                            <Image src="/account-signature.svg" alt="Account signature" width={320} height={150} className="mx-auto -mb-2 mt-2 h-auto w-44" />
+                            <p className="text-sm font-black leading-tight">{accountSignature.name}</p>
+                            <p className="text-sm font-black leading-tight">{accountSignature.title}</p>
+                            <p className="text-sm font-black leading-tight">{accountSignature.company}</p>
+                          </div>
                         </div>
                         <div className="hidden md:block bg-slate-300" />
                         <div className="space-y-3">

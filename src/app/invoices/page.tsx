@@ -119,7 +119,7 @@ const onePagePrintStyles = `
     width: 194mm;
     min-height: 277mm;
     margin: 0 auto;
-    padding: 10mm 11mm 8mm;
+    padding: 8mm 10mm 7mm;
     background: #fff;
     position: relative;
     overflow: hidden;
@@ -133,109 +133,108 @@ const onePagePrintStyles = `
     pointer-events: none;
   }
   .kt-print-invoice:before {
-    right: 0;
-    top: 0;
-    width: 52mm;
-    height: 24mm;
+    right: -12mm;
+    top: -8mm;
+    width: 42mm;
+    height: 18mm;
     background: linear-gradient(45deg, transparent 0 38%, #071947 38% 67%, transparent 67%), linear-gradient(45deg, transparent 0 60%, #cf1126 60%);
   }
   .kt-print-invoice:after {
-    left: 0;
-    bottom: 0;
-    width: 70mm;
-    height: 24mm;
+    left: -18mm;
+    bottom: -10mm;
+    width: 52mm;
+    height: 17mm;
     background: linear-gradient(45deg, #071947 0 63%, transparent 63%), linear-gradient(45deg, transparent 0 70%, #cf1126 70%);
   }
   .kt-print-content { position: relative; z-index: 1; }
   .kt-print-top {
     display: grid;
-    grid-template-columns: 1fr 76mm;
-    gap: 10mm;
+    grid-template-columns: 1fr 60mm;
+    gap: 8mm;
     align-items: start;
-    margin-bottom: 8mm;
+    margin-bottom: 5mm;
   }
-  .kt-print-logo { width: 70mm; height: auto; display: block; margin-bottom: 6mm; }
-  .kt-print-title { margin: 15mm 0 0; font-size: 36px; line-height: 1; font-weight: 900; color: #071947; text-transform: uppercase; letter-spacing: 0.02em; }
-  .kt-print-redline { width: 15mm; height: 1mm; background: #cf1126; margin: 4mm 0 5mm; }
-  .kt-print-date { display: grid; grid-template-columns: 28mm 1fr; gap: 4mm; font-size: 11px; font-weight: 700; }
-  .kt-print-date strong { color: #111827; }
-  .kt-print-date span { color: #c3192d; }
+  .kt-print-logo { width: 47mm; height: auto; display: block; margin-bottom: 1.5mm; }
+  .kt-print-title { margin: 4mm 0 0; font-size: 31px; line-height: 0.88; font-weight: 900; color: #071947; text-transform: uppercase; letter-spacing: 0; }
+  .kt-print-redline { width: 12mm; height: 0.7mm; background: #cf1126; margin: 2.4mm 0; }
+  .kt-print-id { color: #c3192d; font-size: 10px; font-weight: 900; text-transform: uppercase; }
   .kt-print-info {
     display: grid;
-    grid-template-columns: 1fr 1px 1fr;
-    gap: 9mm;
-    margin-bottom: 8mm;
+    grid-template-columns: 1fr 1px 1fr 1px 0.82fr;
+    gap: 5mm;
+    border-top: 1px solid #cfd3da;
+    border-bottom: 1px solid #cfd3da;
+    padding: 4mm 0;
+    margin-bottom: 5mm;
   }
-  .kt-print-company h2 { margin: 0; color: #c3192d; font-size: 16px; line-height: 1.1; font-weight: 900; text-transform: uppercase; }
-  .kt-print-company h3 { margin: 3mm 0 0; color: #c3192d; font-size: 10px; line-height: 1.3; font-weight: 900; text-transform: uppercase; }
-  .kt-print-company .small-line { width: 24mm; height: 0.7mm; background: #c3192d; margin: 4mm 0; }
-  .kt-print-details { display: grid; gap: 2.2mm; font-size: 9px; line-height: 1.45; color: #111827; }
+  .kt-print-label { margin: 0 0 0.8mm; color: #8a94a6; font-size: 7.5px; line-height: 1.05; font-weight: 900; text-transform: uppercase; letter-spacing: 0.04em; }
+  .kt-print-company h2,
+  .kt-print-bill h2,
+  .kt-print-dates h2 { margin: 0 0 1.4mm; color: #111827; font-size: 10px; line-height: 1.05; font-weight: 900; }
+  .kt-print-company h3 { margin: 0 0 1.4mm; color: #c3192d; font-size: 7.5px; line-height: 1.05; font-weight: 900; text-transform: uppercase; }
+  .kt-print-details { display: grid; gap: 0.6mm; font-size: 7.4px; line-height: 1.12; color: #5d6676; }
   .kt-print-divider { background: #d6d6d6; }
-  .kt-print-bill-tag { display: inline-block; min-width: 37mm; padding: 2.3mm 5mm; background: linear-gradient(70deg, #071947 0 84%, #cf1126 84% 92%, transparent 92%); color: #fff; font-size: 10px; font-weight: 900; text-transform: uppercase; }
-  .kt-print-bill-lines { margin-top: 6mm; display: grid; gap: 3mm; }
-  .kt-print-bill-line { min-height: 7mm; border-bottom: 1px dotted #b9b9b9; font-size: 10px; font-weight: 700; color: #111827; padding-bottom: 1mm; }
-  .kt-print-contact { margin-top: 6mm; display: grid; gap: 3mm; font-size: 10px; }
-  .kt-print-contact-row { display: grid; grid-template-columns: 16mm 1fr; gap: 3mm; align-items: end; }
-  .kt-print-contact-row span:last-child { border-bottom: 1px solid #a9a9a9; min-height: 5mm; }
-  .kt-print-table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; overflow: hidden; border: 1px solid #e5e7eb; border-radius: 2mm; }
+  .kt-print-dates { display: grid; gap: 1.8mm; }
+  .kt-print-date-row { display: grid; gap: 0.4mm; font-size: 7.5px; color: #8a94a6; font-weight: 900; text-transform: uppercase; letter-spacing: 0.04em; }
+  .kt-print-date-row span { color: #111827; font-size: 9px; letter-spacing: 0; text-transform: none; }
+  .kt-print-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 0; }
   .kt-print-table th {
-    background: #071947;
-    color: white;
-    padding: 4mm 2mm;
-    font-size: 9px;
+    border-bottom: 1px solid #cfd3da;
+    color: #071947;
+    padding: 2.2mm 2mm;
+    font-size: 8.2px;
     font-weight: 900;
-    text-transform: uppercase;
-    text-align: center;
+    text-align: left;
   }
-  .kt-print-table th:last-child { background: #cf1126; }
+  .kt-print-table th:nth-child(n+3) { text-align: center; }
+  .kt-print-table th:last-child { color: #c3192d; }
   .kt-print-table td {
-    border-right: 1px solid #e5e7eb;
-    border-bottom: 1px solid #e5e7eb;
-    padding: 5mm 3mm;
-    font-size: 11px;
+    border-bottom: 1px solid #d9dde4;
+    padding: 2.3mm 2mm;
+    font-size: 8.6px;
     color: #111827;
     vertical-align: middle;
   }
-  .kt-print-table tr:last-child td { border-bottom: 0; }
-  .kt-print-table td:last-child { border-right: 0; color: #c3192d; font-weight: 900; }
-  .kt-print-desc strong { display: block; margin-bottom: 1.2mm; }
-  .kt-print-desc span { display: block; font-size: 8px; line-height: 1.35; color: #111827; font-weight: 400; }
+  .kt-print-table td:last-child { color: #c3192d; font-weight: 900; }
+  .kt-print-desc strong { display: block; margin-bottom: 0.3mm; }
+  .kt-print-desc span { display: block; font-size: 7px; line-height: 1.08; color: #5d6676; font-weight: 400; }
   .kt-print-center { text-align: center; }
   .kt-print-right { text-align: right; }
   .kt-print-bottom {
-    border-top: 1px solid #cfd3da;
-    margin-top: 8mm;
-    padding-top: 6mm;
+    margin-top: 4mm;
     display: grid;
-    grid-template-columns: 1fr 1px 82mm;
-    gap: 8mm;
+    grid-template-columns: 1fr 58mm;
+    gap: 10mm;
+    align-items: start;
   }
-  .kt-print-payment h3 { margin: 0 0 2mm; color: #071947; font-size: 11px; font-weight: 900; text-transform: uppercase; }
-  .kt-print-payment .red-short { width: 8mm; height: 0.7mm; background: #cf1126; margin-bottom: 4mm; }
-  .kt-print-payment p { margin: 0; font-size: 9px; color: #111827; }
-  .kt-print-signature { margin-top: 8mm; width: 62mm; color: #071947; text-align: center; }
-  .kt-print-signature h3 { margin: 0 0 2mm; color: #111827; font-family: Georgia, 'Times New Roman', serif; font-size: 18px; line-height: 1.05; font-weight: 400; text-transform: none; }
-  .kt-print-signature img { display: block; width: 42mm; height: auto; margin: 0 auto -1mm; }
+  .kt-print-payment h3 { margin: 0 0 1mm; color: #071947; font-size: 8.2px; font-weight: 900; text-transform: uppercase; }
+  .kt-print-payment .red-short { width: 6mm; height: 0.5mm; background: #cf1126; margin-bottom: 2mm; }
+  .kt-print-payment p { margin: 0; max-width: 104mm; font-size: 7.5px; line-height: 1.15; color: #111827; }
+  .kt-print-signature { margin-top: 3mm; width: 42mm; color: #071947; text-align: center; }
+  .kt-print-signature h3 { margin: 0 0 0.6mm; color: #111827; font-family: Georgia, 'Times New Roman', serif; font-size: 12px; line-height: 0.95; font-weight: 400; text-transform: none; }
+  .kt-print-signature img { display: block; width: 27mm; height: auto; margin: 0 auto -0.8mm; }
   .kt-print-signature strong,
-  .kt-print-signature span { display: block; font-size: 8.5px; line-height: 1.35; font-weight: 900; color: #15256f; }
-  .kt-print-summary { display: grid; gap: 3mm; }
+  .kt-print-signature span { display: block; font-size: 6.8px; line-height: 1.05; font-weight: 900; color: #15256f; }
+  .kt-print-summary { display: grid; gap: 0; border-top: 1px solid #cfd3da; }
   .kt-print-summary-row {
     display: grid;
-    grid-template-columns: 1fr 22mm;
-    gap: 5mm;
-    font-size: 11px;
+    grid-template-columns: 1fr 24mm;
+    gap: 4mm;
+    border-bottom: 1px solid #cfd3da;
+    padding: 2mm 0;
+    font-size: 8px;
     color: #111827;
   }
-  .kt-print-grand { display: grid; grid-template-columns: 1fr 32mm; align-items: center; color: white; margin-top: 1mm; }
-  .kt-print-grand span:first-child { background: #071947; padding: 3.5mm 4mm; font-size: 12px; font-weight: 900; text-transform: uppercase; }
-  .kt-print-grand span:last-child { background: #cf1126; padding: 3.5mm 4mm; font-size: 19px; font-weight: 900; text-align: right; }
-  .kt-print-thanks { margin-top: 11mm; text-align: center; color: #071947; font-size: 11px; font-weight: 900; text-transform: uppercase; }
+  .kt-print-grand { display: grid; grid-template-columns: 1fr 29mm; align-items: center; color: white; margin-top: 2mm; }
+  .kt-print-grand span:first-child { background: #071947; padding: 2.4mm 3mm; font-size: 9px; font-weight: 900; text-transform: uppercase; }
+  .kt-print-grand span:last-child { background: #cf1126; padding: 2.4mm 3mm; font-size: 12.5px; font-weight: 900; text-align: right; }
+  .kt-print-thanks { margin-top: 3mm; text-align: center; color: #071947; font-size: 8px; line-height: 1; font-weight: 900; text-transform: uppercase; }
   .invoice-document {
     width: 194mm !important;
     max-width: 194mm !important;
     min-height: auto !important;
     margin: 0 !important;
-    padding: 10mm 11mm 8mm !important;
+    padding: 8mm 10mm 7mm !important;
     border: 0 !important;
     box-shadow: none !important;
     background: #fff !important;
@@ -367,33 +366,42 @@ export default function InvoicePage() {
             <div>
               <h1 class="kt-print-title">Invoice</h1>
               <div class="kt-print-redline"></div>
-              <div class="kt-print-date">
-                <strong>Invoice Date :</strong>
-                <span>${escapeReceiptText(displayDocumentDate)}</span>
-              </div>
+              <div class="kt-print-id">${escapeReceiptText(resolvedManifestId)}</div>
             </div>
           </section>
 
           <section class="kt-print-info">
             <div class="kt-print-company">
+              <p class="kt-print-label">Bill From:</p>
               <h2>${escapeReceiptText(resolvedCompanySubtitle)}</h2>
               <h3>Import / Export & Transportation</h3>
-              <div class="small-line"></div>
               <div class="kt-print-details">
                 ${resolvedCompanyDetails.map((detail) => `<div>${escapeReceiptText(detail)}</div>`).join("")}
               </div>
             </div>
             <div class="kt-print-divider"></div>
-            <div>
-              <div class="kt-print-bill-tag">Bill To:</div>
-              <div class="kt-print-bill-lines">
-                <div class="kt-print-bill-line">${escapeReceiptText(resolvedBillingName)}</div>
-                <div class="kt-print-bill-line">${escapeReceiptText(resolvedBillingAddress)}</div>
-                <div class="kt-print-bill-line">Invoice No: ${escapeReceiptText(resolvedManifestId)}</div>
+            <div class="kt-print-bill">
+              <p class="kt-print-label">Bill To:</p>
+              <h2>${escapeReceiptText(resolvedBillingName)}</h2>
+              <div class="kt-print-details">
+                ${resolvedBillingAddress ? `<div>${escapeReceiptText(resolvedBillingAddress)}</div>` : ""}
+                ${resolvedBillingPhone ? `<div>${escapeReceiptText(resolvedBillingPhone)}</div>` : ""}
+                ${resolvedBillingEmail ? `<div>${escapeReceiptText(resolvedBillingEmail)}</div>` : ""}
               </div>
-              <div class="kt-print-contact">
-                <div class="kt-print-contact-row"><span>Phone :</span><span>${escapeReceiptText(resolvedBillingPhone)}</span></div>
-                <div class="kt-print-contact-row"><span>Email :</span><span>${escapeReceiptText(resolvedBillingEmail)}</span></div>
+            </div>
+            <div class="kt-print-divider"></div>
+            <div class="kt-print-dates">
+              <div class="kt-print-date-row">
+                Invoice No:
+                <span>${escapeReceiptText(resolvedManifestId)}</span>
+              </div>
+              <div class="kt-print-date-row">
+                Issue Date:
+                <span>${escapeReceiptText(displayDocumentDate)}</span>
+              </div>
+              <div class="kt-print-date-row">
+                Due Date:
+                <span>${escapeReceiptText(displayDocumentDate)}</span>
               </div>
             </div>
           </section>
@@ -424,7 +432,6 @@ export default function InvoicePage() {
                 <span>${escapeReceiptText(accountSignature.company)}</span>
               </div>
             </div>
-            <div class="kt-print-divider"></div>
             <div class="kt-print-summary">
               <div class="kt-print-summary-row"><span>SUBTOTAL</span><span>${escapeReceiptText(resolvedCurrencyLabel)} ${subtotal.toFixed(2)}</span></div>
               <div class="kt-print-summary-row"><span>TAX (${taxPercentage.toFixed(2)}%)</span><span>${escapeReceiptText(resolvedCurrencyLabel)} ${taxAmount.toFixed(2)}</span></div>
@@ -985,31 +992,28 @@ export default function InvoicePage() {
                    id="invoice-export-document"
                    className="invoice-document bg-white p-6 md:p-10 border border-slate-200 shadow-2xl relative overflow-hidden text-slate-950"
                  >
-                    <div className="absolute right-0 top-0 h-24 w-52 bg-[linear-gradient(45deg,transparent_0_38%,#071947_38%_67%,transparent_67%),linear-gradient(45deg,transparent_0_60%,#cf1126_60%)] pointer-events-none" />
-                    <div className="absolute bottom-0 left-0 h-24 w-72 bg-[linear-gradient(45deg,#071947_0_63%,transparent_63%),linear-gradient(45deg,transparent_0_70%,#cf1126_70%)] pointer-events-none" />
+                    <div className="absolute -right-12 -top-8 h-20 w-40 bg-[linear-gradient(45deg,transparent_0_38%,#071947_38%_67%,transparent_67%),linear-gradient(45deg,transparent_0_60%,#cf1126_60%)] pointer-events-none" />
+                    <div className="absolute -bottom-10 -left-20 h-20 w-56 bg-[linear-gradient(45deg,#071947_0_63%,transparent_63%),linear-gradient(45deg,transparent_0_70%,#cf1126_70%)] pointer-events-none" />
 
                     <div className="relative z-10">
-                      <div className="grid grid-cols-1 md:grid-cols-[1fr_300px] gap-8 md:gap-12 items-start mb-8">
+                      <div className="grid grid-cols-1 md:grid-cols-[1fr_240px] gap-6 md:gap-8 items-start mb-5">
                         <div>
-                          <Image src="/kt-logistic-logo.jpg" alt="KT Logistic & Trading" width={842} height={595} className="w-72 max-w-full h-auto object-contain" priority />
-                          <p className="mt-2 text-[10px] font-black uppercase tracking-wider text-[#071947]">{resolvedCompanyName}</p>
+                          <Image src="/kt-logistic-logo.jpg" alt="KT Logistic & Trading" width={842} height={595} className="w-48 max-w-full h-auto object-contain" priority />
+                          <p className="mt-1.5 text-[10px] font-black uppercase tracking-wider text-[#071947]">{resolvedCompanyName}</p>
                         </div>
-                        <div className="pt-6 md:pt-14">
-                          <h2 className="text-5xl md:text-6xl font-black uppercase tracking-normal text-[#071947] leading-none">Invoice</h2>
-                          <div className="w-16 h-1 bg-[#cf1126] my-5" />
-                          <div className="grid grid-cols-[120px_1fr] gap-3 text-sm font-bold">
-                            <span>Invoice Date :</span>
-                            <span className="text-[#c3192d]">{displayDocumentDate}</span>
-                          </div>
+                        <div className="pt-2 md:pt-8">
+                          <h2 className="text-4xl md:text-[44px] font-black uppercase tracking-normal text-[#071947] leading-none">Invoice</h2>
+                          <div className="w-12 h-0.5 bg-[#cf1126] my-2.5" />
+                          <p className="text-xs font-black uppercase tracking-wider text-[#c3192d]">{resolvedManifestId}</p>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-[1fr_1px_1fr] gap-8 md:gap-10 mb-10">
+                      <div className="grid grid-cols-1 md:grid-cols-[1fr_1px_1fr_1px_0.82fr] gap-5 border-y border-slate-300 py-4 mb-5">
                         <div>
-                          <h1 className="text-xl md:text-2xl font-black uppercase text-[#c3192d] leading-tight">{resolvedCompanySubtitle}</h1>
-                          <p className="mt-3 text-xs md:text-sm font-black uppercase text-[#c3192d]">Import / Export & Transportation</p>
-                          <div className="w-24 h-1 bg-[#c3192d] my-5" />
-                          <div className="space-y-3 text-xs md:text-sm font-semibold leading-relaxed text-slate-900">
+                          <p className="mb-1 text-[9px] font-black uppercase tracking-wide text-slate-400">Bill From:</p>
+                          <h1 className="text-[13px] font-black text-slate-950 leading-none">{resolvedCompanySubtitle}</h1>
+                          <p className="mt-1 text-[9px] font-black uppercase leading-none text-[#c3192d]">Import / Export & Transportation</p>
+                          <div className="mt-2 space-y-0.5 text-[9px] font-semibold leading-tight text-slate-500">
                             {resolvedCompanyDetails.map((detail) => (
                               <p key={detail}>{detail}</p>
                             ))}
@@ -1019,36 +1023,42 @@ export default function InvoicePage() {
                         <div className="hidden md:block bg-slate-300" />
 
                         <div>
-                          <div className="inline-flex min-w-44 bg-[#071947] text-white px-5 py-2 text-xs font-black uppercase relative after:absolute after:right-[-18px] after:top-0 after:border-y-[16px] after:border-l-[18px] after:border-y-transparent after:border-l-[#cf1126]">
-                            Bill To:
+                          <p className="mb-1 text-[9px] font-black uppercase tracking-wide text-slate-400">Bill To:</p>
+                          <h2 className="text-[13px] font-black text-slate-950 leading-none">{resolvedBillingName}</h2>
+                          <div className="mt-2 space-y-0.5 text-[9px] font-semibold leading-tight text-slate-500">
+                            {resolvedBillingAddress && <p className="whitespace-pre-line">{resolvedBillingAddress}</p>}
+                            {resolvedBillingPhone && <p>{resolvedBillingPhone}</p>}
+                            {resolvedBillingEmail && <p>{resolvedBillingEmail}</p>}
                           </div>
-                          <div className="mt-6 space-y-4 text-sm font-bold">
-                            <p className="min-h-7 border-b border-dotted border-slate-400">{resolvedBillingName}</p>
-                            <p className="min-h-7 border-b border-dotted border-slate-400 whitespace-pre-line">{resolvedBillingAddress}</p>
-                            <p className="min-h-7 border-b border-dotted border-slate-400">Invoice No: {resolvedManifestId}</p>
+                        </div>
+
+                        <div className="hidden md:block bg-slate-300" />
+
+                        <div className="space-y-2">
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-wide text-slate-400">Invoice No:</p>
+                            <p className="mt-0.5 text-[11px] font-black leading-none text-slate-950">{resolvedManifestId}</p>
                           </div>
-                          <div className="mt-7 space-y-4 text-sm">
-                            <div className="grid grid-cols-[70px_1fr] gap-3">
-                              <span>Phone :</span>
-                              <span className="border-b border-slate-400 min-h-6">{resolvedBillingPhone}</span>
-                            </div>
-                            <div className="grid grid-cols-[70px_1fr] gap-3">
-                              <span>Email :</span>
-                              <span className="border-b border-slate-400 min-h-6">{resolvedBillingEmail}</span>
-                            </div>
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-wide text-slate-400">Issue Date:</p>
+                            <p className="mt-0.5 text-[11px] font-black leading-none text-slate-950">{displayDocumentDate}</p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-wide text-slate-400">Due Date:</p>
+                            <p className="mt-0.5 text-[11px] font-black leading-none text-slate-950">{displayDocumentDate}</p>
                           </div>
                         </div>
                       </div>
 
-                      <div className="overflow-x-auto custom-scrollbar mb-10">
-                        <table className="w-full min-w-[720px] table-fixed border-separate border-spacing-0 overflow-hidden rounded-t-lg border border-slate-200 text-sm">
+                      <div className="overflow-x-auto custom-scrollbar mb-4">
+                        <table className="w-full min-w-[680px] table-fixed border-collapse text-[11px]">
                           <thead>
                             <tr>
-                              <th className="w-[13%] bg-[#071947] px-4 py-4 text-center text-white font-black uppercase">Qty</th>
-                              <th className="w-[36%] bg-[#071947] px-4 py-4 text-center text-white font-black uppercase">Description</th>
-                              <th className="w-[17%] bg-[#071947] px-4 py-4 text-center text-white font-black uppercase">Unit</th>
-                              <th className="w-[18%] bg-[#071947] px-4 py-4 text-center text-white font-black uppercase">Unit Price</th>
-                              <th className="w-[16%] bg-[#cf1126] px-4 py-4 text-center text-white font-black uppercase">Total</th>
+                              <th className="w-[12%] border-b border-slate-300 px-3 py-2 text-center font-black text-[#071947]">Qty</th>
+                              <th className="w-[40%] border-b border-slate-300 px-3 py-2 text-left font-black text-[#071947]">Description</th>
+                              <th className="w-[16%] border-b border-slate-300 px-3 py-2 text-center font-black text-[#071947]">Unit</th>
+                              <th className="w-[16%] border-b border-slate-300 px-3 py-2 text-center font-black text-[#071947]">Unit Price</th>
+                              <th className="w-[16%] border-b border-slate-300 px-3 py-2 text-center font-black text-[#c3192d]">Total</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1057,16 +1067,16 @@ export default function InvoicePage() {
 
                               return (
                                 <tr key={item.id}>
-                                  <td className="border-b border-r border-slate-200 px-4 py-7 text-center text-2xl font-black text-[#071947]">{getLineQuantityDisplay(item)}</td>
-                                  <td className="border-b border-r border-slate-200 px-6 py-7">
-                                    <p className="font-black text-slate-950">{item.name || "Cargo Item"}</p>
+                                  <td className="border-b border-slate-200 px-3 py-2 text-center text-sm font-black text-[#071947]">{getLineQuantityDisplay(item)}</td>
+                                  <td className="border-b border-slate-200 px-3 py-2">
+                                    <p className="font-black leading-tight text-slate-950">{item.name || "Cargo Item"}</p>
                                     {item.subtitle.trim() && (
-                                      <p className="mt-2 text-xs leading-relaxed text-slate-600">{item.subtitle}</p>
+                                      <p className="mt-0.5 text-[9px] leading-tight text-slate-500">{item.subtitle}</p>
                                     )}
                                   </td>
-                                  <td className="border-b border-r border-slate-200 px-4 py-7 text-center font-semibold">{getLineUnitDisplay(item)}</td>
-                                  <td className="border-b border-r border-slate-200 px-4 py-7 text-center font-semibold">{resolvedCurrencyLabel} {getLineRateDisplay(item)}</td>
-                                  <td className="border-b border-slate-200 px-4 py-7 text-center font-black text-[#c3192d]">{resolvedCurrencyLabel} {lineTotal.toFixed(2)}</td>
+                                  <td className="border-b border-slate-200 px-3 py-2 text-center font-semibold">{getLineUnitDisplay(item)}</td>
+                                  <td className="border-b border-slate-200 px-3 py-2 text-center font-semibold">{resolvedCurrencyLabel} {getLineRateDisplay(item)}</td>
+                                  <td className="border-b border-slate-200 px-3 py-2 text-center font-black text-[#c3192d]">{resolvedCurrencyLabel} {lineTotal.toFixed(2)}</td>
                                 </tr>
                               );
                             })}
@@ -1074,37 +1084,36 @@ export default function InvoicePage() {
                         </table>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-[1fr_1px_330px] gap-8 border-t border-slate-300 pt-8">
+                      <div className="grid grid-cols-1 md:grid-cols-[1fr_260px] gap-8">
                         <div>
-                          <h3 className="text-sm font-black uppercase text-[#071947]">Payment Method</h3>
-                          <div className="w-8 h-1 bg-[#cf1126] my-3" />
-                          <p className="text-sm font-medium text-slate-900">{resolvedPaymentMethod}</p>
-                          <div className="mt-10 w-72 max-w-full text-center text-[#15256f]">
-                            <h3 className="font-serif text-3xl font-normal leading-none text-slate-950">ACCOUNT Signature</h3>
-                            <Image src="/account-signature.svg" alt="Account signature" width={320} height={150} className="mx-auto -mb-2 mt-2 h-auto w-44" />
-                            <p className="text-sm font-black leading-tight">{accountSignature.name}</p>
-                            <p className="text-sm font-black leading-tight">{accountSignature.title}</p>
-                            <p className="text-sm font-black leading-tight">{accountSignature.company}</p>
+                          <h3 className="text-[11px] font-black uppercase text-[#071947]">Payment Method</h3>
+                          <div className="w-6 h-0.5 bg-[#cf1126] my-1.5" />
+                          <p className="max-w-xl text-[11px] font-medium leading-tight text-slate-900">{resolvedPaymentMethod}</p>
+                          <div className="mt-3 w-48 max-w-full text-center text-[#15256f]">
+                            <h3 className="font-serif text-lg font-normal leading-none text-slate-950">ACCOUNT Signature</h3>
+                            <Image src="/account-signature.svg" alt="Account signature" width={320} height={150} className="mx-auto -mb-1 mt-1 h-auto w-24" />
+                            <p className="text-[10px] font-black leading-none">{accountSignature.name}</p>
+                            <p className="text-[10px] font-black leading-none">{accountSignature.title}</p>
+                            <p className="text-[10px] font-black leading-none">{accountSignature.company}</p>
                           </div>
                         </div>
-                        <div className="hidden md:block bg-slate-300" />
-                        <div className="space-y-3">
-                          <div className="grid grid-cols-[1fr_auto] gap-6 text-sm">
+                        <div className="space-y-0 border-t border-slate-300">
+                          <div className="grid grid-cols-[1fr_auto] gap-6 border-b border-slate-300 py-1.5 text-[11px]">
                             <span>SUBTOTAL</span>
                             <span>{resolvedCurrencyLabel} {subtotal.toFixed(2)}</span>
                           </div>
-                          <div className="grid grid-cols-[1fr_auto] gap-6 border-b border-slate-300 pb-4 text-sm">
+                          <div className="grid grid-cols-[1fr_auto] gap-6 border-b border-slate-300 py-1.5 text-[11px]">
                             <span>TAX ({taxPercentage.toFixed(2)}%)</span>
                             <span>{resolvedCurrencyLabel} {taxAmount.toFixed(2)}</span>
                           </div>
-                          <div className="grid grid-cols-[1fr_auto] items-center text-white">
-                            <span className="bg-[#071947] px-4 py-3 text-lg font-black uppercase">Grand Total</span>
-                            <span className="bg-[#cf1126] px-4 py-3 text-2xl font-black tabular-nums">{resolvedCurrencyLabel} {grandTotal.toFixed(2)}</span>
+                          <div className="mt-2 grid grid-cols-[1fr_auto] items-center text-white">
+                            <span className="bg-[#071947] px-3 py-1.5 text-xs font-black uppercase">Grand Total</span>
+                            <span className="bg-[#cf1126] px-3 py-1.5 text-base font-black tabular-nums">{resolvedCurrencyLabel} {grandTotal.toFixed(2)}</span>
                           </div>
                         </div>
                       </div>
 
-                      <p className="mt-14 mb-2 text-center text-sm font-black uppercase text-[#071947]">Thank you for your business!</p>
+                      <p className="mt-4 mb-1 text-center text-[11px] font-black uppercase leading-none text-[#071947]">Thank you for your business!</p>
                     </div>
 
                  </motion.div>

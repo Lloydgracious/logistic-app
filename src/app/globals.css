@@ -76,7 +76,7 @@ h1, h2, h3, h4, h5, h6, .outfit {
 .invoice-preview-frame {
   --invoice-preview-scale: 0.43;
   --invoice-preview-width: 81.7mm;
-  --invoice-preview-height: 123.4mm;
+  --invoice-preview-height: 176.7mm;
   width: min(100%, var(--invoice-preview-width));
   height: var(--invoice-preview-height);
   margin-inline: auto;
@@ -93,7 +93,7 @@ h1, h2, h3, h4, h5, h6, .outfit {
   .invoice-preview-frame {
     --invoice-preview-scale: 0.52;
     --invoice-preview-width: 98.8mm;
-    --invoice-preview-height: 149.2mm;
+    --invoice-preview-height: 213.5mm;
   }
 }
 
@@ -101,7 +101,7 @@ h1, h2, h3, h4, h5, h6, .outfit {
   .invoice-preview-frame {
     --invoice-preview-scale: 0.72;
     --invoice-preview-width: 136.8mm;
-    --invoice-preview-height: 206.6mm;
+    --invoice-preview-height: 295.9mm;
   }
 }
 
@@ -109,7 +109,7 @@ h1, h2, h3, h4, h5, h6, .outfit {
   .invoice-preview-frame {
     --invoice-preview-scale: 0.88;
     --invoice-preview-width: 167.2mm;
-    --invoice-preview-height: 252.6mm;
+    --invoice-preview-height: 361.7mm;
   }
 }
 

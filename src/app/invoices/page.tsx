@@ -1015,9 +1015,12 @@ export default function InvoicePage() {
                    initial={{ opacity: 0, y: 20 }}
                    animate={{ opacity: 1, y: 0 }}
                    exit={{ opacity: 0, y: -20 }}
-                   id="invoice-export-document"
-                   className="invoice-document w-[190mm] bg-white border border-slate-200 shadow-2xl relative text-slate-950"
+                   className="invoice-preview-motion"
                  >
+                  <div
+                    id="invoice-export-document"
+                    className="invoice-document w-[190mm] bg-white border border-slate-200 shadow-2xl relative text-slate-950"
+                  >
                     <div className="flex min-h-[287mm] flex-col pt-[18mm] pb-[10mm]">
                       <div className="mx-auto w-[170mm] max-w-[calc(100%-20mm)] flex-1">
                         <div className="mb-6 grid grid-cols-[38mm_106mm_1fr] items-center">
@@ -1113,6 +1116,7 @@ export default function InvoicePage() {
                       </div>
                     </div>
 
+                  </div>
                  </motion.div>
             </AnimatePresence>
           </div>

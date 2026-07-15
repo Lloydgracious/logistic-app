@@ -639,44 +639,44 @@ export default function InvoicePage() {
   };
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto pb-20 animate-in fade-in slide-in-from-bottom-8 duration-500">
+    <div className="mx-auto max-w-7xl space-y-6 px-3 pb-20 sm:px-4 lg:px-0 animate-in fade-in slide-in-from-bottom-8 duration-500">
       
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+      <div className="flex flex-col items-start justify-between gap-5 md:flex-row md:items-end">
         <div>
-          <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tighter outfit uppercase italic">
+          <h2 className="text-3xl font-black uppercase italic tracking-tight text-slate-900 dark:text-white outfit sm:text-4xl md:text-5xl">
             Billing <span className="text-cyan-500">Office</span>
           </h2>
           <p className="text-[10px] font-black text-slate-400 dark:text-zinc-600 uppercase tracking-[0.2em] mt-2">KT Logistic invoice generation and transport billing.</p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3 md:w-auto">
            <button 
              onClick={handleExportPdf} 
-             className="flex items-center gap-2 bg-slate-900 text-white px-5 py-3 rounded-none font-black text-[10px] uppercase tracking-widest hover:bg-cyan-600 transition-all shadow-xl"
+             className="flex items-center justify-center gap-2 bg-slate-900 text-white px-4 py-3 rounded-none font-black text-[10px] uppercase tracking-widest hover:bg-cyan-600 transition-all shadow-xl"
            >
              <Printer className="w-4 h-4" /> Print Receipt
            </button>
            <button 
              onClick={saveCurrentReceipt}
-             className="flex items-center gap-2 bg-cyan-600 text-white px-5 py-3 rounded-none font-black text-[10px] uppercase tracking-widest hover:bg-slate-900 transition-all shadow-xl"
+             className="flex items-center justify-center gap-2 bg-cyan-600 text-white px-4 py-3 rounded-none font-black text-[10px] uppercase tracking-widest hover:bg-slate-900 transition-all shadow-xl"
            >
              <Save className="w-4 h-4" /> Save Receipt
            </button>
            <button 
              onClick={handleExportPdf}
-             className="flex items-center gap-2 bg-white dark:bg-zinc-900 text-slate-900 dark:text-white border-2 border-slate-900 dark:border-white px-5 py-3 rounded-none font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all shadow-lg"
+             className="flex items-center justify-center gap-2 bg-white dark:bg-zinc-900 text-slate-900 dark:text-white border-2 border-slate-900 dark:border-white px-4 py-3 rounded-none font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all shadow-lg"
            >
              <Download className="w-4 h-4" /> Export PDF
            </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
         
         {/* Billing Setup Pane */}
-        <div className="lg:col-span-4 space-y-4">
-           <div className="saas-card p-6 rounded-none border border-cyan-100 dark:border-cyan-900/40 bg-cyan-50/30 dark:bg-cyan-950/10">
+        <div className="space-y-4 lg:col-span-4">
+           <div className="saas-card rounded-none border border-cyan-100 bg-cyan-50/30 p-4 dark:border-cyan-900/40 dark:bg-cyan-950/10 sm:p-6">
               <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 border-b border-cyan-100 dark:border-cyan-900/40 pb-3">Document Setup</h3>
               <div className="space-y-4">
                  <div className="space-y-1.5">
@@ -894,7 +894,7 @@ export default function InvoicePage() {
                             </button>
                           </div>
                           {item.pricingType === "weight" ? (
-                            <div className="grid grid-cols-[1fr_82px_1fr] gap-2">
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_82px_1fr]">
                               <input
                                 type="number"
                                 min="0"
@@ -923,7 +923,7 @@ export default function InvoicePage() {
                               />
                             </div>
                           ) : (
-                            <div className="grid grid-cols-[1fr_76px_1fr] gap-2">
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_76px_1fr]">
                               <input
                                 type="number"
                                 min="0"
@@ -963,7 +963,7 @@ export default function InvoicePage() {
                </div>
            </div>
 
-           <div className="saas-card p-6 rounded-none border border-slate-100 dark:border-zinc-800 bg-white dark:bg-black">
+           <div className="saas-card rounded-none border border-slate-100 bg-white p-4 dark:border-zinc-800 dark:bg-black sm:p-6">
               <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 border-b border-slate-100 dark:border-zinc-800 pb-3">Saved Receipts</h3>
               <div className="space-y-3">
                 {savedReceipts.map((receipt) => (
@@ -997,7 +997,7 @@ export default function InvoicePage() {
               </div>
            </div>
 
-           <div className="saas-card p-6 rounded-none border border-slate-100 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 text-slate-400">
+           <div className="saas-card rounded-none border border-slate-100 bg-slate-50 p-4 text-slate-400 dark:border-zinc-800 dark:bg-zinc-900/50 sm:p-6">
               <div className="flex items-center gap-3 mb-4">
                  <FileText className="w-5 h-5" />
                  <p className="text-[10px] font-black uppercase tracking-widest">Legal Notice</p>
@@ -1007,15 +1007,16 @@ export default function InvoicePage() {
         </div>
 
         {/* Invoice Preview Pane */}
-        <div className="lg:col-span-8">
-           <AnimatePresence mode="wait">
+        <div className="min-w-0 lg:col-span-8">
+          <div className="invoice-preview-frame">
+            <AnimatePresence mode="wait">
                  <motion.div 
                    key={selectedOrder?.id || "draft-invoice"}
                    initial={{ opacity: 0, y: 20 }}
                    animate={{ opacity: 1, y: 0 }}
                    exit={{ opacity: 0, y: -20 }}
                    id="invoice-export-document"
-                   className="invoice-document mx-auto w-[190mm] max-w-full bg-white border border-slate-200 shadow-2xl relative text-slate-950"
+                   className="invoice-document w-[190mm] bg-white border border-slate-200 shadow-2xl relative text-slate-950"
                  >
                     <div className="flex min-h-[287mm] flex-col pt-[18mm] pb-[10mm]">
                       <div className="mx-auto w-[170mm] max-w-[calc(100%-20mm)] flex-1">
@@ -1113,7 +1114,8 @@ export default function InvoicePage() {
                     </div>
 
                  </motion.div>
-           </AnimatePresence>
+            </AnimatePresence>
+          </div>
         </div>
 
       </div>

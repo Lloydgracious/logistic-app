@@ -72,3 +72,56 @@ h1, h2, h3, h4, h5, h6, .outfit {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+.invoice-preview-frame {
+  --invoice-preview-scale: 0.43;
+  --invoice-preview-width: 81.7mm;
+  --invoice-preview-height: 123.4mm;
+  width: min(100%, var(--invoice-preview-width));
+  height: var(--invoice-preview-height);
+  margin-inline: auto;
+  overflow: hidden;
+}
+
+.invoice-preview-frame .invoice-document {
+  max-width: none !important;
+  transform: scale(var(--invoice-preview-scale));
+  transform-origin: top left;
+}
+
+@media (min-width: 420px) {
+  .invoice-preview-frame {
+    --invoice-preview-scale: 0.52;
+    --invoice-preview-width: 98.8mm;
+    --invoice-preview-height: 149.2mm;
+  }
+}
+
+@media (min-width: 640px) {
+  .invoice-preview-frame {
+    --invoice-preview-scale: 0.72;
+    --invoice-preview-width: 136.8mm;
+    --invoice-preview-height: 206.6mm;
+  }
+}
+
+@media (min-width: 768px) {
+  .invoice-preview-frame {
+    --invoice-preview-scale: 0.88;
+    --invoice-preview-width: 167.2mm;
+    --invoice-preview-height: 252.6mm;
+  }
+}
+
+@media (min-width: 1024px) {
+  .invoice-preview-frame {
+    --invoice-preview-scale: 1;
+    width: 190mm;
+    height: auto;
+    overflow: visible;
+  }
+
+  .invoice-preview-frame .invoice-document {
+    transform: none;
+  }
+}

@@ -258,9 +258,20 @@ export async function fetchGarageSnapshot(): Promise<GarageSnapshot> {
   };
 }
 
-async function deleteAll(tableName: TableName) {
+async function deleteWhereIn(tableName: TableName, columnName: string, values: string[]) {
+  const filteredValues = values.filter(Boolean);
+  if (filteredValues.length === 0) return;
+
   const supabase = requireClient();
-  const { error } = await supabase.from(tableName).delete().not("id", "is", null);
+  const { error } = await supabase.from(tableName).delete().in(columnName, filteredValues);
+  throwIfError(error);
+}
+
+async function deleteWhereEquals(tableName: TableName, columnName: string, value: string) {
+  if (!value) return;
+
+  const supabase = requireClient();
+  const { error } = await supabase.from(tableName).delete().eq(columnName, value);
   throwIfError(error);
 }
 
@@ -279,6 +290,33 @@ async function upsertRows<TableInsert extends Record<string, unknown>>(tableName
   }
 
   throwIfError(error);
+}
+
+export async function deleteCustomerRecord(id: string) {
+  if (!isSupabaseConfigured()) return;
+  await deleteWhereEquals("customers", "id", id);
+}
+
+export async function deleteIncomingRecord(id: string) {
+  if (!isSupabaseConfigured()) return;
+  await deleteWhereEquals("incoming_shipments", "id", id);
+  await deleteWhereEquals("container_stock", "container_id", id);
+}
+
+export async function deleteOrderRecord(id: string) {
+  if (!isSupabaseConfigured()) return;
+  await deleteWhereEquals("orders", "id", id);
+}
+
+export async function deleteInventorySectionRecord(id: string) {
+  if (!isSupabaseConfigured()) return;
+  await deleteWhereEquals("container_stock", "inventory_section_id", id);
+  await deleteWhereEquals("inventory_sections", "id", id);
+}
+
+export async function deleteStockRecord(id: string) {
+  if (!isSupabaseConfigured()) return;
+  await deleteWhereEquals("container_stock", "id", id);
 }
 
 export async function saveGarageSnapshot(snapshot: GarageSnapshot, scope: SyncScope = "all") {
@@ -333,7 +371,7 @@ export async function saveGarageSnapshot(snapshot: GarageSnapshot, scope: SyncSc
   }
 
   if (scope === "incoming") {
-    await deleteAll("incoming_items");
+    await deleteWhereIn("incoming_items", "incoming_id", snapshot.incomingList.map((incoming) => incoming.id));
 
     await upsertRows("inventory_sections", snapshot.inventorySections.map((section) => ({
       id: section.id,
@@ -384,7 +422,7 @@ export async function saveGarageSnapshot(snapshot: GarageSnapshot, scope: SyncSc
   }
 
   if (scope === "orders") {
-    await deleteAll("order_items");
+    await deleteWhereIn("order_items", "order_id", snapshot.orders.map((order) => order.id));
 
     await upsertRows("customers", snapshot.customers.map((customer) => ({
       id: customer.id,
@@ -438,19 +476,9 @@ export async function saveGarageSnapshot(snapshot: GarageSnapshot, scope: SyncSc
   }
 
   await Promise.all([
-    deleteAll("incoming_items"),
-    deleteAll("order_items"),
+    deleteWhereIn("incoming_items", "incoming_id", snapshot.incomingList.map((incoming) => incoming.id)),
+    deleteWhereIn("order_items", "order_id", snapshot.orders.map((order) => order.id)),
   ]);
-
-  await Promise.all([
-    deleteAll("container_stock"),
-    deleteAll("activity_logs"),
-    deleteAll("orders"),
-    deleteAll("incoming_shipments"),
-    deleteAll("customers"),
-  ]);
-
-  await deleteAll("inventory_sections");
 
   await upsertRows("inventory_sections", snapshot.inventorySections.map((section) => ({
     id: section.id,

@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import {
   canUseSupabase,
+  deleteCustomerRecord,
+  deleteIncomingRecord,
+  deleteInventorySectionRecord,
+  deleteOrderRecord,
+  deleteStockRecord,
   fetchGarageSnapshot,
   saveGarageSnapshot,
 } from "@/lib/supabase/logistics";
@@ -412,6 +417,29 @@ const queueRemoteSync = (state: GarageState, set: SetGarageState, scope: SyncSco
     });
 };
 
+const queueRemoteDeleteThenSync = (
+  state: GarageState,
+  set: SetGarageState,
+  deleteTask: () => Promise<void>,
+  scope: SyncScope = "all",
+) => {
+  if (!canUseSupabase()) return;
+
+  const snapshot = getSnapshot(state);
+  set({ isSyncing: true, syncError: undefined });
+
+  syncQueue = syncQueue
+    .then(deleteTask)
+    .then(() => saveGarageSnapshot(snapshot, scope))
+    .then(() => set({ isSyncing: false }))
+    .catch((error) => {
+      set({
+        isSyncing: false,
+        syncError: error instanceof Error ? error.message : "Could not sync with Supabase.",
+      });
+    });
+};
+
 const initialIncomingList: Incoming[] = [];
 const initialContainerStock: ContainerStock[] = [];
 const initialCustomers: Customer[] = [];
@@ -559,7 +587,7 @@ export const useStore = create<GarageState>((set, get) => ({
       };
     });
 
-    queueRemoteSync(get(), set, "all");
+    queueRemoteDeleteThenSync(get(), set, () => deleteInventorySectionRecord(id), "all");
     get().addLog('MANUAL', `Inventory header ${section.title} was deleted`);
   },
 
@@ -634,7 +662,7 @@ export const useStore = create<GarageState>((set, get) => ({
       customers: state.customers.filter((item) => item.id !== id),
     }));
 
-    queueRemoteSync(get(), set, "all");
+    queueRemoteDeleteThenSync(get(), set, () => deleteCustomerRecord(id), "logs");
     get().addLog('MANUAL', `Customer profile deleted for ${customer.name}`);
   },
 
@@ -711,7 +739,7 @@ export const useStore = create<GarageState>((set, get) => ({
       };
     });
 
-    queueRemoteSync(get(), set, "all");
+    queueRemoteDeleteThenSync(get(), set, () => deleteIncomingRecord(id), "logs");
     get().addLog('INCOMING', `Incoming shipment ${incoming.containerNumber} was deleted`);
   },
 
@@ -930,7 +958,7 @@ export const useStore = create<GarageState>((set, get) => ({
       };
     });
 
-    queueRemoteSync(get(), set, "all");
+    queueRemoteDeleteThenSync(get(), set, () => deleteOrderRecord(id), "inventory");
     get().addLog('OUTGOING', `Order for ${order.customerName} was deleted and stock was returned`);
   },
 
@@ -1094,7 +1122,7 @@ export const useStore = create<GarageState>((set, get) => ({
       };
     });
 
-    queueRemoteSync(get(), set, "all");
+    queueRemoteDeleteThenSync(get(), set, () => deleteStockRecord(id), "logs");
     get().addLog('MANUAL', `Inventory row ${stockRow.productName} in ${stockRow.containerNumber} was deleted`);
   },
 }));
